@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لعبة XO ثلاثية الأبعاد</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+
+        /* خلفية متحركة */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(ellipse at center, rgba(120, 40, 200, 0.15) 0%, transparent 60%);
+            animation: rotateBg 20s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes rotateBg {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* النجوم في الخلفية */
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle var(--duration) ease-in-out infinite;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.2; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.5); }
+        }
+
+        .game-container {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 25px;
+        }
+
+        /* العنوان */
+        .title {
+            text-align: center;
+            animation: titleFloat 3s ease-in-out infinite;
+        }
+
+        @keyframes titleFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .title h1 {
+            font-size: 3.5rem;
+            font-weight: 900;
+            background: linear-gradient(45deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #c77dff);
+            background-size: 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: colorShift 3s linear infinite;
+            text-shadow: none;
+            letter-spacing: 5px;
+        }
+
+        @keyframes colorShift {
+            0% { background-position: 0%; }
+            100% { background-position: 300%; }
+        }
+
+        .title p {
+            color: rgba(255,255,255,0.6);
+            font-size: 1rem;
+            letter-spacing: 3px;
+            margin-top: 5px;
+        }
+
+        /* لوحة النتائج */
+        .scoreboard {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .score-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 15px 30px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .score-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+        }
+
+        .score-card.x-card::before {
+            background: linear-gradient(90deg, #ff6b6b, #ff4757);
+        }
+
+        .score-card.o-card::before {
+            background: linear-gradient(90deg, #4d96ff, #2980b9);
+        }
+
+        .score-card.draw-card::before {
+            background: linear-gradient(90deg, #ffd93d, #f39c12);
+        }
+
+        .score-card.active {
+            transform: scale(1.1);
+            border-color: rgba(255,255,255,0.3);
+            box-shadow: 0 0 30px rgba(255,255,255,0.1);
+        }
+
+        .score-label {
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.5);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .score-symbol {
+            font-size: 1.8rem;
+            font-weight: 900;
+            margin-bottom: 3px;
+        }
+
+        .score-card.x-card .score-symbol { color: #ff6b6b; }
+        .score-card.o-card .score-symbol { color: #4d96ff; }
+        .score-card.draw-card .score-symbol { color: #ffd93d; }
+
+        .score-num {
+            font-size: 2rem;
+            font-weight: 900;
+            color: white;
+        }
+
+        .vs-text {
+            color: rgba(255,255,255,0.3);
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        /* شريط الحالة */
+        .status-bar {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 50px;
+            padding: 12px 30px;
+            backdrop-filter: blur(10px);
+            min-width: 300px;
+            text-align: center;
+        }
+
+        .status-text {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        .status-dot.x { background: #ff6b6b; }
+        .status-dot.o { background: #4d96ff; }
+        .status-dot.win { background: #6bcb77; }
+        .status-dot.draw { background: #ffd93d; }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.7; }
+        }
+
+        /* لوحة اللعب الثلاثية الأبعاد */
+        .board-wrapper {
+            perspective: 1000px;
+        }
+
+        .board-3d {
+            transform-style: preserve-3d;
+            transform: rotateX(10deg) rotateY(-5deg);
+            transition: transform 0.5s ease;
+        }
+
+        .board-3d:hover {
+            transform: rotateX(5deg) rotateY(0deg);
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            padding: 25px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 25px;
+            border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(20px);
+            box-shadow: 
+                0 30px 60px rgba(0,0,0,0.5),
+                0 0 0 1px rgba(255,255,255,0.05),
+                inset 0 1px 0 rgba(255,255,255,0.1);
+            position: relative;
+        }
+
+        /* خطوط الشبكة المضيئة */
+        .board::before,
+        .board::after {
+            content: '';
+            position: absolute;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            animation: gridGlow 3s ease-in-out infinite;
+        }
+
+        @keyframes gridGlow {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.8; }
+        }
+
+        /* الخلايا */
+        .cell {
+            width: 110px;
+            height: 110px;
+            background: linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            font-weight: 900;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            overflow: hidden;
+            transform-style: preserve-3d;
+        }
+
+        .cell::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 20px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .cell:hover:not(.taken) {
+            transform: translateZ(15px) scale(1.05);
+            border-color: rgba(255,255,255,0.3);
+            box-shadow: 
+                0 15px 35px rgba(0,0,0,0.4),
+                0 0 20px rgba(255,255,255,0.05);
+        }
+
+        .cell:hover:not(.taken)::before {
+            opacity: 1;
+            background: radial-gradient(circle at center, rgba(255,255,255,0.1), transparent);
+        }
+
+        .cell.taken {
+            cursor: not-allowed;
+        }
+
+        /* رمز X */
+        .cell.x-cell {
+            background: linear-gradient(145deg, rgba(255, 107, 107, 0.15), rgba(255, 71, 87, 0.05));
+            border-color: rgba(255, 107, 107, 0.4);
+            box-shadow: 
+                0 0 20px rgba(255, 107, 107, 0.2),
+                inset 0 1px 0 rgba(255,255,255,0.1);
+            animation: cellAppear 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .cell.x-cell .cell-symbol {
+            color: #ff6b6b;
+            text-shadow: 0 0 20px rgba(255, 107, 107, 0.8), 0 0 40px rgba(255, 107, 107, 0.4);
+            animation: symbolPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* رمز O */
+        .cell.o-cell {
+            background: linear-gradient(145deg, rgba(77, 150, 255, 0.15), rgba(41, 128, 185, 0.05));
+            border-color: rgba(77, 150, 255, 0.4);
+            box-shadow: 
+                0 0 20px rgba(77, 150, 255, 0.2),
+                inset 0 1px 0 rgba(255,255,255,0.1);
+            animation: cellAppear 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .cell.o-cell .cell-symbol {
+            color: #4d96ff;
+            text-shadow: 0 0 20px rgba(77, 150, 255, 0.8), 0 0 40px rgba(77, 150, 255, 0.4);
+            animation: symbolPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes cellAppear {
+            0% { transform: translateZ(0) scale(0.8); }
+            100% { transform: translateZ(5px) scale(1); }
+        }
+
+        @keyframes symbolPop {
+            0% { transform: scale(0) rotate(-180deg); opacity: 0; }
+            60% { transform: scale(1.3) rotate(10deg); }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+
+        /* خلايا الفوز */
+        .cell.winner {
+            animation: winPulse 0.8s ease-in-out infinite alternate;
+        }
+
+        .cell.x-cell.winner {
+            background: linear-gradient(145deg, rgba(255, 107, 107, 0.4), rgba(255, 71, 87, 0.2));
+            border-color: #ff6b6b;
+            box-shadow: 0 0 40px rgba(255, 107, 107, 0.6), 0 0 80px rgba(255, 107, 107, 0.3);
+        }
+
+        .cell.o-cell.winner {
+            background: linear-gradient(145deg, rgba(77, 150, 255, 0.4), rgba(41, 128, 185, 0.2));
+            border-color: #4d96ff;
+            box-shadow: 0 0 40px rgba(77, 150, 255, 0.6), 0 0 80px rgba(77, 150, 255, 0.3);
+        }
+
+        @keyframes winPulse {
+            0% { transform: translateZ(10px) scale(1.02); }
+            100% { transform: translateZ(20px) scale(1.08); }
+        }
+
+        .cell-symbol {
+            position: relative;
+            z-index: 2;
+            line-height: 1;
+        }
+
+        /* رمز التحويم */
+        .cell-hint {
+            position: absolute;
+            font-size: 2rem;
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+        }
+
+        .cell:hover:not(.taken) .cell-hint {
+            opacity: 0.2;
+        }
+
+        /* الأزرار */
+        .buttons {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 14px 35px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.5s, height 0.5s;
+        }
+
+        .btn:active::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-restart {
+            background: linear-gradient(135deg, #6bcb77, #40916c);
+            color: white;
+            box-shadow: 0 5px 20px rgba(107, 203, 119, 0.4);
+        }
+
+        .btn-restart:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 10px 30px rgba(107, 203, 119, 0.6);
+        }
+
+        .btn-reset {
+            background: linear-gradient(135deg, #c77dff, #7b2d8b);
+            color: white;
+            box-shadow: 0 5px 20px rgba(199, 125, 255, 0.4);
+        }
+
+        .btn-reset:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 10px 30px rgba(199, 125, 255, 0.6);
+        }
+
+        /* نافذة الفوز */
+        .win-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+            backdrop-filter: blur(5px);
+        }
+
+        .win-overlay.show {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .win-card {
+            background: linear-gradient(145deg, rgba(30,30,60,0.95), rgba(15,15,30,0.95));
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 30px;
+            padding: 50px 60px;
+            text-align: center;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.8);
+            animation: cardZoom 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        @keyframes cardZoom {
+            0% { transform: scale(0.5) rotate(-5deg); opacity: 0; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+
+        .win-emoji {
+            font-size: 5rem;
+            display: block;
+            animation: emojiSpin 1s ease-in-out;
+            margin-bottom: 15px;
+        }
+
+        @keyframes emojiSpin {
+            0% { transform: scale(0) rotate(-360deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+
+        .win-title {
+            font-size: 2.5rem;
+            font-weight: 900;
+            margin-bottom: 10px;
+        }
+
+        .win-title.x-win { color: #ff6b6b; text-shadow: 0 0 30px rgba(255,107,107,0.8); }
+        .win-title.o-win { color: #4d96ff; text-shadow: 0 0 30px rgba(77,150,255,0.8); }
+        .win-title.draw { color: #ffd93d; text-shadow: 0 0 30px rgba(255,217,61,0.8); }
+
+        .win-sub {
+            color: rgba(255,255,255,0.6);
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+        }
+
+        .win-btn {
+            padding: 15px 50px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            background: linear-gradient(135deg, #6bcb77, #40916c);
+            color: white;
+            box-shadow: 0 5px 20px rgba(107,203,119,0.4);
+            transition: all 0.3s ease;
+            letter-spacing: 1px;
+        }
+
+        .win-btn:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 10px 30px rgba(107,203,119,0.6);
+        }
+
+        /* جسيمات الاحتفال */
+        .confetti-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 99;
+            overflow: hidden;
+        }
+
+        .confetti-piece {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            top: -20px;
+            animation: confettiFall var(--fall-duration) linear forwards;
+            opacity: 0;
+        }
+
+        @keyframes confettiFall {
+            0% { 
+                transform: translateX(0) rotate(0deg) scale(1);
+                opacity: 1;
+                top: -20px;
+            }
+            100% { 
+                transform: translateX(var(--drift)) rotate(720deg) scale(0.5);
+                opacity: 0;
+                top: 110vh;
+            }
+        }
+
+        /* وضع الكمبيوتر */
+        .mode-selector {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .mode-btn {
+            padding: 10px 25px;
+            border-radius: 50px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.05);
+            color: rgba(255,255,255,0.6);
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            letter-spacing: 1px;
+        }
+
+        .mode-btn.active {
+            background: linear-gradient(135deg, rgba(199, 125, 255, 0.3), rgba(123, 45, 139, 0.3));
+            border-color: #c77dff;
+            color: white;
+            box-shadow: 0 0 20px rgba(199,125,255,0.3);
+        }
+
+        .mode-btn:hover:not(.active) {
+            background: rgba(255,255,255,0.1);
+            border-color: rgba(255,255,255,0.3);
+            color: white;
+        }
+
+        /* مؤشر دور اللاعب */
+        .turn-indicator {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .player-tag {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 20px;
+            border-radius: 50px;
+            border: 1px solid transparent;
+            transition: all 0.3s ease;
+            opacity: 0.4;
+        }
+
+        .player-tag.active {
+            opacity: 1;
+            transform: scale(1.05);
+        }
+
+        .player-tag.x-tag {
+            background: rgba(255, 107, 107, 0.1);
+            border-color: rgba(255, 107, 107, 0.3);
+        }
+
+        .player-tag.x-tag.active {
+            background: rgba(255, 107, 107, 0.2);
+            border-color: rgba(255, 107, 107, 0.6);
+            box-shadow: 0 0 20px rgba(255,107,107,0.2);
+        }
+
+        .player-tag.o-tag {
+            background: rgba(77, 150, 255, 0.1);
+            border-color: rgba(77, 150, 255, 0.3);
+        }
+
+        .player-tag.o-tag.active {
+            background: rgba(77, 150, 255, 0.2);
+            border-color: rgba(77, 150, 255, 0.6);
+            box-shadow: 0 0 20px rgba(77,150,255,0.2);
+        }
+
+        .player-symbol {
+            font-size: 1.2rem;
+            font-weight: 900;
+        }
+
+        .x-tag .player-symbol { color: #ff6b6b; }
+        .o-tag .player-symbol { color: #4d96ff; }
+
+        .player-name {
+            color: white;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .turn-arrow {
+            font-size: 1.2rem;
+            color: rgba(255,255,255,0.3);
+        }
+
+        /* تأثير AI thinking */
+        .thinking {
+            animation: thinkingPulse 0.5s ease-in-out infinite;
+        }
+
+        @keyframes thinkingPulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        /* تجاوبية */
+        @media (max-width: 480px) {
+            .cell { width: 85px; height: 85px; font-size: 2.2rem; }
+            .title h1 { font-size: 2.5rem; }
+            .board { padding: 15px; gap: 10px; }
+            .win-card { padding: 30px 25px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- نجوم الخلفية -->
+    <div class="stars" id="stars"></div>
+
+    <!-- جسيمات الاحتفال -->
+    <div class="confetti-container" id="confetti"></div>
+
+    <!-- نافذة الفوز -->
+    <div class="win-overlay" id="winOverlay">
+        <div class="win-card">
+            <span class="win-emoji" id="winEmoji">🎉</span>
+            <div class="win-title" id="winTitle">فوز!</div>
+            <div class="win-sub" id="winSub">لعبة رائعة!</div>
+            <button class="win-btn" onclick="restartGame()">🔄 العب مرة أخرى</button>
+        </div>
+    </div>
+
+    <div class="game-container">
+        <!-- العنوان -->
+        <div class="title">
+            <h1>✕  ○</h1>
+            <p>لعبة إكس أو الكلاسيكية</p>
+        </div>
+
+        <!-- اختيار الوضع -->
+        <div class="mode-selector">
+            <button class="mode-btn active" id="pvpBtn" onclick="setMode('pvp')">👥 لاعبان</button>
+            <button class="mode-btn" id="aiBtn" onclick="setMode('ai')">🤖 ضد الكمبيوتر</button>
+        </div>
+
+        <!-- لوحة النتائج -->
+        <div class="scoreboard">
+            <div class="score-card x-card" id="xCard">
+                <div class="score-label">اللاعب</div>
+                <div class="score-symbol">✕</div>
+                <div class="score-num" id="xScore">0</div>
+            </div>
+            <div class="vs-text">VS</div>
+            <div class="score-card draw-card">
+                <div class="score-label">تعادل</div>
+                <div class="score-symbol">🤝</div>
+                <div class="score-num" id="drawScore">0</div>
+            </div>
+            <div class="vs-text">VS</div>
+            <div class="score-card o-card" id="oCard">
+                <div class="score-label">اللاعب</div>
+                <div class="score-symbol">○</div>
+                <div class="score-num" id="oScore">0</div>
+            </div>
+        </div>
+
+        <!-- مؤشر الدور -->
+        <div class="turn-indicator">
+            <div class="player-tag x-tag active" id="xTag">
+                <span class="player-symbol">✕</span>
+                <span class="player-name">لاعب 1</span>
+            </div>
+            <div class="turn-arrow">⚡</div>
+            <div class="player-tag o-tag" id="oTag">
+                <span class="player-symbol">○</span>
+                <span class="player-name">لاعب 2</span>
+            </div>
+        </div>
+
+        <!-- اللوحة -->
+        <div class="board-wrapper">
+            <div class="board-3d">
+                <div class="board" id="board">
+                    <!-- الخلايا تُولَّد بـ JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- الأزرار -->
+        <div class="buttons">
+            <button class="btn btn-restart" onclick="restartGame()">🔄 جولة جديدة</button>
+            <button class="btn btn-reset" onclick="resetScores()">🗑️ إعادة التسجيل</button>
+        </div>
+    </div>
+
+    <script>
+        // ==================== النجوم ====================
+        const starsContainer = document.getElementById('stars');
+        for (let i = 0; i < 80; i++) {
+            const star = document.createElement('div');
+            star.classList.add('star');
+            const size = Math.random() * 3 + 1;
+            star.style.cssText = `
+                width: ${size}px;
+                height: ${size}px;
+                left: ${Math.random() * 100}%;
+                top: ${Math.random() * 100}%;
+                --duration: ${Math.random() * 3 + 2}s;
+                animation-delay: ${Math.random() * 3}s;
+            `;
+            starsContainer.appendChild(star);
+        }
+
+        // ==================== متغيرات اللعبة ====================
+        let board = Array(9).fill(null);
+        let currentPlayer = 'X';
+        let gameActive = true;
+        let scores = { X: 0, O: 0, draw: 0 };
+        let mode = 'pvp'; // pvp أو ai
+        let hoverSymbol = 'X';
+
+        const winCombos = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8], // صفوف
+            [0, 3, 6], [1, 4, 7], [2, 5, 8], // أعمدة
+            [0, 4, 8], [2, 4, 6]              // أقطار
+        ];
+
+        // ==================== إنشاء اللوحة ====================
+        function createBoard() {
+            const boardEl = document.getElementById('board');
+            boardEl.innerHTML = '';
+            for (let i = 0; i < 9; i++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                cell.dataset.index = i;
+                cell.innerHTML = `
+                    <span class="cell-hint">${currentPlayer === 'X' ? '✕' : '○'}</span>
+                    <span class="cell-symbol"></span>
+                `;
+                cell.addEventListener('click', () => handleClick(i));
+                cell.addEventListener('mouseenter', () => updateHint(cell));
+                boardEl.appendChild(cell);
+            }
+        }
+
+        function updateHint(cell) {
+            if (!cell.classList.contains('taken') && gameActive) {
+                const hint = cell.querySelector('.cell-hint');
+                if (hint) hint.textContent = currentPlayer === 'X' ? '✕' : '○';
+            }
+        }
+
+        // ==================== التعامل مع النقر ====================
+        function handleClick(index) {
+            if (!gameActive || board[index]) return;
+            if (mode === 'ai' && currentPlayer === 'O') return;
+
+            makeMove(index, currentPlayer);
+
+            if (mode === 'ai' && gameActive) {
+                setTimeout(() => {
+                    const aiIndex = getBestMove();
+                    if (aiIndex !== -1) makeMove(aiIndex, 'O');
+                }, 600);
+            }
+        }
+
+        function makeMove(index, player) {
+            board[index] = player;
+            const cells = document.querySelectorAll('.cell');
+            const cell = cells[index];
+
+            cell.classList.add('taken', player === 'X' ? 'x-cell' : 'o-cell');
+            cell.querySelector('.cell-symbol').textContent = player === 'X' ? '✕' : '○';
+            cell.querySelector('.cell-hint').style.display = 'none';
+
+            // صوت (اهتزاز بصري)
+            cell.style.transform = 'translateZ(20px) scale(1.1)';
+            setTimeout(() => {
+                cell.style.transform = '';
+            }, 200);
+
+            const winner = checkWinner();
+            if (winner) {
+                endGame(winner);
+            } else if (board.every(c => c)) {
+                endGame(null);
+            } else {
+                currentPlayer = player === 'X' ? 'O' : 'X';
+                updateTurnIndicator();
+                updateAllHints();
+            }
+        }
+
+        function updateAllHints() {
+            document.querySelectorAll('.cell:not(.taken) .cell-hint').forEach(hint => {
+                hint.textContent = currentPlayer === 'X' ? '✕' : '○';
+            });
+        }
+
+        // ==================== التحقق من الفائز ====================
+        function checkWinner() {
+            for (const combo of winCombos) {
+                const [a, b, c] = combo;
+                if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+                    return { player: board[a], combo };
+                }
+            }
+            return null;
+        }
+
+        // ==================== إنهاء اللعبة ====================
+        function endGame(result) {
+            gameActive = false;
+
+            if (result) {
+                // تمييز خلايا الفوز
+                const cells = document.querySelectorAll('.cell');
+                result.combo.forEach(i => {
+                    cells[i].classList.add('winner');
+                });
+
+                scores[result.player]++;
+                updateScores();
+                
+                setTimeout(() => {
+                    showWinOverlay(result.player);
+                    createConfetti(result.player === 'X' ? '#ff6b6b' : '#4d96ff');
+                }, 500);
+            } else {
+                scores.draw++;
+                updateScores();
+                
+                setTimeout(() => {
+                    showWinOverlay(null);
+                    createConfetti('#ffd93d');
+                }, 300);
+            }
+        }
+
+        function showWinOverlay(player) {
+            const overlay = document.getElementById('winOverlay');
+            const title = document.getElementById('winTitle');
+            const sub = document.getElementById('winSub');
+            const emoji = document.getElementById('winEmoji');
+
+            title.className = 'win-title';
+
+            if (player === 'X') {
+                emoji.textContent = '🏆';
+                title.textContent = `اللاعب X فاز!`;
+                title.classList.add('x-win');
+                sub.textContent = 'لعبة X رائعة! 🔥';
+            } else if (player === 'O') {
+                emoji.textContent = '🏆';
+                title.textContent = mode === 'ai' ? 'الكمبيوتر فاز!' : 'اللاعب O فاز!';
+                title.classList.add('o-win');
+                sub.textContent = mode === 'ai' ? 'حاول مرة أخرى! 💪' : 'لعبة O رائعة! 🌊';
+            } else {
+                emoji.textContent = '🤝';
+                title.textContent = 'تعادل!';
+                title.classList.add('draw');
+                sub.textContent = 'مباراة متكافئة جداً! ⚡';
+            }
+
+            overlay.classList.add('show');
+        }
+
+        // ==================== تحديث الواجهة ====================
+        function updateTurnIndicator() {
+            const xTag = document.getElementById('xTag');
+            const oTag = document.getElementById('oTag');
+
+            if (currentPlayer === 'X') {
+                xTag.classList.add('active');
+                oTag.classList.remove('active');
+                document.getElementById('xCard').classList.add('active');
+                document.getElementById('oCard').classList.remove('active');
+            } else {
+                oTag.classList.add('active');
+                xTag.classList.remove('active');
+                document.getElementById('oCard').classList.add('active');
+                document.getElementById('xCard').classList.remove('active');
+
+                if (mode === 'ai') {
+                    const oTagName = oTag.querySelector('.player-name');
+                    oTagName.textContent = '🤖 يفكر...';
+                    oTagName.classList.add('thinking');
+                    setTimeout(() => {
+                        oTagName.textContent = '🤖 كمبيوتر';
+                        oTagName.classList.remove('thinking');
+                    }, 600);
+                }
+            }
+        }
+
+        function updateScores() {
+            document.getElementById('xScore').textContent = scores.X;
+            document.getElementById('oScore').textContent = scores.O;
+            document.getElementById('drawScore').textContent = scores.draw;
+        }
+
+        // ==================== إعادة التشغيل ====================
+        function restartGame() {
+            board = Array(9).fill(null);
+            currentPlayer = 'X';
+            gameActive = true;
+
+            document.getElementById('winOverlay').classList.remove('show');
+            document.getElementById('confetti').innerHTML = '';
+
+            createBoard();
+            updateTurnIndicator();
+
+            // إعادة تعيين بطاقات الدور
+            document.getElementById('xTag').classList.add('active');
+            document.getElementById('oTag').classList.remove('active');
+            document.getElementById('xCard').classList.add('active');
+            document.getElementById('oCard').classList.remove('active');
+        }
+
+        function resetScores() {
+            scores = { X: 0, O: 0, draw: 0 };
+            updateScores();
+            restartGame();
+        }
+
+        // ==================== وضع اللعب ====================
+        function setMode(newMode) {
+            mode = newMode;
+            document.getElementById('pvpBtn').classList.toggle('active', mode === 'pvp');
+            document.getElementById('aiBtn').classList.toggle('active', mode === 'ai');
+
+            const oLabel = document.querySelector('#oCard .score-label');
+            const oTagName = document.querySelector('#oTag .player-name');
+
+            if (mode === 'ai') {
+                oLabel.textContent = 'كمبيوتر';
+                oTagName.textContent = '🤖 كمبيوتر';
+            } else {
+                oLabel.textContent = 'اللاعب';
+                oTagName.textContent = 'لاعب 2';
+            }
+
+            restartGame();
+        }
+
+        // ==================== ذكاء اصطناعي (Minimax) ====================
+        function getBestMove() {
+            let bestScore = -Infinity;
+            let bestMove = -1;
+
+            for (let i = 0; i < 9; i++) {
+                if (!board[i]) {
+                    board[i] = 'O';
+                    const score = minimax(board, 0, false);
+                    board[i] = null;
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestMove = i;
+                    }
+                }
+            }
+            return bestMove;
+        }
+
+        function minimax(boardState, depth, isMaximizing) {
+            const result = checkWinnerForBoard(boardState);
+            if (result === 'O') return 10 - depth;
+            if (result === 'X') return depth - 10;
+            if (boardState.every(c => c)) return 0;
+
+            if (isMaximizing) {
+                let best = -Infinity;
+                for (let i = 0; i < 9; i++) {
+                    if (!boardState[i]) {
+                        boardState[i] = 'O';
+                        best = Math.max(best, minimax(boardState, depth + 1, false));
+                        boardState[i] = null;
+                    }
+                }
+                return best;
+            } else {
+                let best = Infinity;
+                for (let i = 0; i < 9; i++) {
+                    if (!boardState[i]) {
+                        boardState[i] = 'X';
+                        best = Math.min(best, minimax(boardState, depth + 1, true));
+                        boardState[i] = null;
+                    }
+                }
+                return best;
+            }
+        }
+
+        function checkWinnerForBoard(b) {
+            for (const [a, c, d] of winCombos) {
+                if (b[a] && b[a] === b[c] && b[a] === b[d]) return b[a];
+            }
+            return null;
+        }
+
+        // ==================== جسيمات الاحتفال ====================
+        function createConfetti(mainColor) {
+            const container = document.getElementById('confetti');
+            container.innerHTML = '';
+
+            const colors = [mainColor, '#ffd93d', '#6bcb77', '#c77dff', '#ff6b6b', '#4d96ff', '#fff'];
+            const shapes = ['border-radius: 50%', 'border-radius: 0', 'border-radius: 2px', 'clip-path: polygon(50% 0%, 0% 100%, 100% 100%)'];
+
+            for (let i = 0; i < 80; i++) {
+                const piece = document.createElement('div');
+                piece.classList.add('confetti-piece');
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                const shape = shapes[Math.floor(Math.random() * shapes.length)];
+                const size = Math.random() * 12 + 6;
+                const drift = (Math.random() - 0.5) * 400;
+                const duration = Math.random() * 2 + 1.5;
+                const delay = Math.random() * 1;
+
+                piece.style.cssText = `
+                    left: ${Math.random() * 100}%;
+                    width: ${size}px;
+                    height: ${size}px;
+                    background: ${color};
+                    ${shape};
+                    --fall-duration: ${duration}s;
+                    --drift: ${drift}px;
+                    animation-delay: ${delay}s;
+                `;
+                container.appendChild(piece);
+            }
+
+            setTimeout(() => container.innerHTML = '', 4000);
+        }
+
+        // ==================== تحريك اللوحة بالماوس ====================
+        document.addEventListener('mousemove', (e) => {
+            const board3d = document.querySelector('.board-3d');
+            if (!board3d) return;
+            const rect = board3d.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const rotY = ((e.clientX - centerX) / window.innerWidth) * 15;
+            const rotX = -((e.clientY - centerY) / window.innerHeight) * 10;
+            board3d.style.transform = `rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+        });
+
+        document.addEventListener('mouseleave', () => {
+            const board3d = document.querySelector('.board-3d');
+            if (board3d) board3d.style.transform = 'rotateX(10deg) rotateY(-5deg)';
+        });
+
+        // ==================== بدء اللعبة ====================
+        createBoard();
+        document.getElementById('xCard').classList.add('active');
+    </script>
+</body>
+</html>
