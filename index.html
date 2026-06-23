@@ -1,363 +1,69 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لعبة تيك تاك تو - ناصر</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مرحباً بك</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-        body {
-            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-family: 'Arial', sans-serif;
-            color: white;
-        }
+    body {
+      background-color: #e3f2fd;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
 
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
+    .container {
+      background-color: #1565c0;
+      color: #ffffff;
+      padding: 60px 80px;
+      border-radius: 20px;
+      text-align: center;
+      box-shadow: 0 10px 40px rgba(21, 101, 192, 0.4);
+    }
 
-        .header h1 {
-            font-size: 2.5rem;
-            background: linear-gradient(45deg, #e94560, #f5a623);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: none;
-            margin-bottom: 5px;
-        }
+    h1 {
+      font-size: 3rem;
+      margin-bottom: 20px;
+      letter-spacing: 2px;
+    }
 
-        .header .creator {
-            font-size: 1rem;
-            color: #a0a0c0;
-            letter-spacing: 2px;
-        }
+    p {
+      font-size: 1.3rem;
+      color: #bbdefb;
+      margin-bottom: 30px;
+    }
 
-        .creator span {
-            color: #f5a623;
-            font-weight: bold;
-        }
+    .btn {
+      background-color: #ffffff;
+      color: #1565c0;
+      border: none;
+      padding: 14px 36px;
+      font-size: 1rem;
+      border-radius: 50px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.3s ease;
+    }
 
-        .score-board {
-            display: flex;
-            gap: 30px;
-            margin-bottom: 20px;
-            background: rgba(255, 255, 255, 0.05);
-            padding: 15px 40px;
-            border-radius: 50px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .score-item {
-            text-align: center;
-        }
-
-        .score-item .player-name {
-            font-size: 0.9rem;
-            color: #a0a0c0;
-            margin-bottom: 5px;
-        }
-
-        .score-item .score-num {
-            font-size: 2rem;
-            font-weight: bold;
-        }
-
-        .score-item.x-score .score-num { color: #e94560; }
-        .score-item.o-score .score-num { color: #4ecdc4; }
-        .score-item.draw-score .score-num { color: #f5a623; }
-
-        .status {
-            font-size: 1.3rem;
-            margin-bottom: 20px;
-            padding: 10px 30px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 25px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            min-width: 280px;
-            text-align: center;
-            transition: all 0.3s ease;
-        }
-
-        .status.x-turn { border-color: #e94560; color: #e94560; }
-        .status.o-turn { border-color: #4ecdc4; color: #4ecdc4; }
-        .status.winner { border-color: #f5a623; color: #f5a623; font-size: 1.5rem; }
-        .status.draw { border-color: #a0a0c0; color: #a0a0c0; }
-
-        .board {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            margin-bottom: 25px;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        .cell {
-            width: 100px;
-            height: 100px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 2px solid rgba(255, 255, 255, 0.15);
-            border-radius: 15px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 3rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .cell:hover:not(.taken) {
-            background: rgba(255, 255, 255, 0.12);
-            border-color: rgba(255, 255, 255, 0.4);
-            transform: scale(1.05);
-            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
-        }
-
-        .cell.x {
-            color: #e94560;
-            border-color: #e94560;
-            background: rgba(233, 69, 96, 0.1);
-            text-shadow: 0 0 20px rgba(233, 69, 96, 0.8);
-        }
-
-        .cell.o {
-            color: #4ecdc4;
-            border-color: #4ecdc4;
-            background: rgba(78, 205, 196, 0.1);
-            text-shadow: 0 0 20px rgba(78, 205, 196, 0.8);
-        }
-
-        .cell.winning {
-            animation: winPulse 0.6s ease-in-out infinite alternate;
-            border-color: #f5a623 !important;
-            background: rgba(245, 166, 35, 0.2) !important;
-        }
-
-        @keyframes winPulse {
-            from { box-shadow: 0 0 10px rgba(245, 166, 35, 0.5); transform: scale(1); }
-            to { box-shadow: 0 0 30px rgba(245, 166, 35, 0.9); transform: scale(1.08); }
-        }
-
-        .cell.taken { cursor: not-allowed; }
-
-        .cell-appear {
-            animation: cellAppear 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        @keyframes cellAppear {
-            from { transform: scale(0) rotate(180deg); opacity: 0; }
-            to { transform: scale(1) rotate(0deg); opacity: 1; }
-        }
-
-        .buttons {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        .btn {
-            padding: 12px 30px;
-            border: none;
-            border-radius: 50px;
-            font-size: 1rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            letter-spacing: 1px;
-        }
-
-        .btn-restart {
-            background: linear-gradient(45deg, #e94560, #c0392b);
-            color: white;
-            box-shadow: 0 5px 20px rgba(233, 69, 96, 0.4);
-        }
-
-        .btn-restart:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(233, 69, 96, 0.6);
-        }
-
-        .btn-restart:active { transform: translateY(0); }
-
-        .btn-reset {
-            background: linear-gradient(45deg, #f5a623, #e67e22);
-            color: white;
-            box-shadow: 0 5px 20px rgba(245, 166, 35, 0.4);
-        }
-
-        .btn-reset:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(245, 166, 35, 0.6);
-        }
-
-        .btn-reset:active { transform: translateY(0); }
-
-        .footer {
-            margin-top: 25px;
-            color: rgba(255, 255, 255, 0.3);
-            font-size: 0.85rem;
-            letter-spacing: 1px;
-        }
-
-        .footer span {
-            color: #f5a623;
-        }
-
-        @media (max-width: 400px) {
-            .cell { width: 85px; height: 85px; font-size: 2.5rem; }
-            .header h1 { font-size: 2rem; }
-        }
-    </style>
+    .btn:hover {
+      background-color: #bbdefb;
+      transform: scale(1.05);
+    }
+  </style>
 </head>
 <body>
-
-    <div class="header">
-        <h1>⭕ تيك تاك تو ❌</h1>
-        <p class="creator">تصميم: <span>ناصر</span></p>
-    </div>
-
-    <div class="score-board">
-        <div class="score-item x-score">
-            <div class="player-name">❌ اللاعب X</div>
-            <div class="score-num" id="scoreX">0</div>
-        </div>
-        <div class="score-item draw-score">
-            <div class="player-name">🤝 تعادل</div>
-            <div class="score-num" id="scoreDraw">0</div>
-        </div>
-        <div class="score-item o-score">
-            <div class="player-name">⭕ اللاعب O</div>
-            <div class="score-num" id="scoreO">0</div>
-        </div>
-    </div>
-
-    <div class="status x-turn" id="status">🎮 دور اللاعب ❌</div>
-
-    <div class="board" id="board">
-        <div class="cell" onclick="handleClick(0)" id="cell0"></div>
-        <div class="cell" onclick="handleClick(1)" id="cell1"></div>
-        <div class="cell" onclick="handleClick(2)" id="cell2"></div>
-        <div class="cell" onclick="handleClick(3)" id="cell3"></div>
-        <div class="cell" onclick="handleClick(4)" id="cell4"></div>
-        <div class="cell" onclick="handleClick(5)" id="cell5"></div>
-        <div class="cell" onclick="handleClick(6)" id="cell6"></div>
-        <div class="cell" onclick="handleClick(7)" id="cell7"></div>
-        <div class="cell" onclick="handleClick(8)" id="cell8"></div>
-    </div>
-
-    <div class="buttons">
-        <button class="btn btn-restart" onclick="restartGame()">🔄 إعادة الجولة</button>
-        <button class="btn btn-reset" onclick="resetAll()">🗑️ تصفير النقاط</button>
-    </div>
-
-    <div class="footer">
-        جميع الحقوق محفوظة © <span>ناصر</span> 2024
-    </div>
-
-    <script>
-        let board = ['', '', '', '', '', '', '', '', ''];
-        let currentPlayer = 'X';
-        let gameOver = false;
-        let scores = { X: 0, O: 0, Draw: 0 };
-
-        const winCombinations = [
-            [0, 1, 2], [3, 4, 5], [6, 7, 8],
-            [0, 3, 6], [1, 4, 7], [2, 5, 8],
-            [0, 4, 8], [2, 4, 6]
-        ];
-
-        function handleClick(index) {
-            if (board[index] !== '' || gameOver) return;
-
-            board[index] = currentPlayer;
-            const cell = document.getElementById(`cell${index}`);
-            cell.textContent = currentPlayer === 'X' ? '❌' : '⭕';
-            cell.classList.add(currentPlayer.toLowerCase(), 'taken', 'cell-appear');
-
-            const winner = checkWinner();
-            if (winner) {
-                highlightWinner(winner);
-                scores[currentPlayer]++;
-                updateScores();
-                const status = document.getElementById('status');
-                status.textContent = `🏆 الفائز: اللاعب ${currentPlayer === 'X' ? '❌' : '⭕'}`;
-                status.className = 'status winner';
-                gameOver = true;
-            } else if (board.every(cell => cell !== '')) {
-                scores.Draw++;
-                updateScores();
-                const status = document.getElementById('status');
-                status.textContent = '🤝 تعادل! لا يوجد فائز';
-                status.className = 'status draw';
-                gameOver = true;
-            } else {
-                currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
-                const status = document.getElementById('status');
-                status.textContent = `🎮 دور اللاعب ${currentPlayer === 'X' ? '❌' : '⭕'}`;
-                status.className = `status ${currentPlayer === 'X' ? 'x-turn' : 'o-turn'}`;
-            }
-        }
-
-        function checkWinner() {
-            for (let combo of winCombinations) {
-                const [a, b, c] = combo;
-                if (board[a] && board[a] === board[b] && board[a] === board[c]) {
-                    return combo;
-                }
-            }
-            return null;
-        }
-
-        function highlightWinner(combo) {
-            combo.forEach(index => {
-                document.getElementById(`cell${index}`).classList.add('winning');
-            });
-        }
-
-        function restartGame() {
-            board = ['', '', '', '', '', '', '', '', ''];
-            currentPlayer = 'X';
-            gameOver = false;
-
-            for (let i = 0; i < 9; i++) {
-                const cell = document.getElementById(`cell${i}`);
-                cell.textContent = '';
-                cell.className = 'cell';
-            }
-
-            const status = document.getElementById('status');
-            status.textContent = '🎮 دور اللاعب ❌';
-            status.className = 'status x-turn';
-        }
-
-        function resetAll() {
-            scores = { X: 0, O: 0, Draw: 0 };
-            updateScores();
-            restartGame();
-        }
-
-        function updateScores() {
-            document.getElementById('scoreX').textContent = scores.X;
-            document.getElementById('scoreO').textContent = scores.O;
-            document.getElementById('scoreDraw').textContent = scores.Draw;
-        }
-    </script>
-
+  <div class="container">
+    <h1>👋 مرحباً بك!</h1>
+    <p>يسعدنا زيارتك لهذه الصفحة الرائعة</p>
+    <button class="btn">ابدأ الآن</button>
+  </div>
 </body>
 </html>
