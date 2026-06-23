@@ -1,5 +1,0 @@
-{
-  "error": "empty_request",
-  "message": "The request template variable '{{ $json.message.text }}' was not replaced with actual content. Please provide a valid programming request.",
-  "example_request": "Write a Python function to calculate factorial"
-}
