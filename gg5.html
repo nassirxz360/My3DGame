@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تطبيق الرياضة</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+            min-height: 100vh;
+            color: #fff;
+        }
+
+        header {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 2px solid rgba(255,255,255,0.2);
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(90deg, #e94560, #0f3460);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        header p {
+            color: #aaa;
+            margin-top: 5px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .stats-bar {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .stat-card {
+            flex: 1;
+            min-width: 150px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: transform 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-card .icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .stat-card .value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #e94560;
+        }
+
+        .stat-card .label {
+            font-size: 0.9rem;
+            color: #aaa;
+            margin-top: 5px;
+        }
+
+        .sports-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .sport-card {
+            background: rgba(255,255,255,0.08);
+            border-radius: 20px;
+            padding: 25px;
+            border: 1px solid rgba(255,255,255,0.15);
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sport-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #e94560, #533483);
+        }
+
+        .sport-card:hover {
+            transform: translateY(-8px);
+            background: rgba(255,255,255,0.15);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+
+        .sport-card .sport-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .sport-card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+
+        .sport-card p {
+            color: #aaa;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .sport-card .calories {
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #e94560;
+            font-weight: bold;
+        }
+
+        .start-btn {
+            margin-top: 15px;
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(90deg, #e94560, #533483);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: opacity 0.3s;
+            font-family: inherit;
+        }
+
+        .start-btn:hover {
+            opacity: 0.85;
+        }
+
+        .timer-section {
+            background: rgba(255,255,255,0.08);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+
+        .timer-section h2 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #e94560;
+        }
+
+        .timer-display {
+            font-size: 4rem;
+            font-weight: bold;
+            color: #fff;
+            margin: 20px 0;
+            font-family: monospace;
+        }
+
+        .timer-controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .timer-btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+
+        .btn-start {
+            background: #27ae60;
+            color: #fff;
+        }
+
+        .btn-pause {
+            background: #f39c12;
+            color: #fff;
+        }
+
+        .btn-reset {
+            background: #e74c3c;
+            color: #fff;
+        }
+
+        .timer-btn:hover {
+            opacity: 0.85;
+            transform: scale(1.05);
+        }
+
+        .progress-section {
+            background: rgba(255,255,255,0.08);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+
+        .progress-section h2 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #e94560;
+        }
+
+        .progress-item {
+            margin-bottom: 20px;
+        }
+
+        .progress-item .prog-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+
+        .progress-bar {
+            height: 12px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 10px;
+            background: linear-gradient(90deg, #e94560, #533483);
+            transition: width 1s ease;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: #1a1a2e;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 90%;
+            border: 1px solid rgba(255,255,255,0.2);
+            text-align: center;
+            position: relative;
+        }
+
+        .modal h2 {
+            font-size: 2rem;
+            margin-bottom: 15px;
+            color: #e94560;
+        }
+
+        .modal .modal-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        .modal p {
+            color: #aaa;
+            line-height: 1.8;
+            margin-bottom: 20px;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .exercises-list {
+            text-align: right;
+            margin: 15px 0;
+        }
+
+        .exercises-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            color: #ddd;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .exercises-list li::before {
+            content: '✓';
+            color: #27ae60;
+            font-weight: bold;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #555;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        @media (max-width: 600px) {
+            header h1 { font-size: 1.8rem; }
+            .timer-display { font-size: 2.5rem; }
+            .sports-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>💪 تطبيق الرياضة</h1>
+    <p>ابدأ رحلتك نحو جسم أقوى وحياة أفضل</p>
+</header>
+
+<div class="container">
+
+    <!-- Stats Bar -->
+    <div class="stats-bar">
+        <div class="stat-card">
+            <div class="icon">🔥</div>
+            <div class="value" id="totalCalories">0</div>
+            <div class="label">سعرة حرارية محروقة</div>
+        </div>
+        <div class="stat-card">
+            <div class="icon">⏱️</div>
+            <div class="value" id="totalMinutes">0</div>
+            <div class="label">دقيقة تمرين</div>
+        </div>
+        <div class="stat-card">
+            <div class="icon">🏆</div>
+            <div class="value" id="totalWorkouts">0</div>
+            <div class="label">تمرين مكتمل</div>
+        </div>
+        <div class="stat-card">
+            <div class="icon">📅</div>
+            <div class="value" id="streak">0</div>
+            <div class="label">أيام متتالية</div>
+        </div>
+    </div>
+
+    <!-- Timer Section -->
+    <div class="timer-section">
+        <h2>⏱️ مؤقت التمرين</h2>
+        <div class="timer-display" id="timerDisplay">00:00:00</div>
+        <div class="timer-controls">
+            <button class="timer-btn btn-start" onclick="startTimer()">▶ ابدأ</button>
+            <button class="timer-btn btn-pause" onclick="pauseTimer()">⏸ إيقاف مؤقت</button>
+            <button class="timer-btn btn-reset" onclick="resetTimer()">↺ إعادة تعيين</button>
+        </div>
+    </div>
+
+    <!-- Sports Grid -->
+    <h2 style="margin-bottom:20px; font-size:1.5rem;">🏅 اختر رياضتك</h2>
+    <div class="sports-grid">
+
+        <div class="sport-card" onclick="openModal('running')">
+            <div class="sport-icon">🏃</div>
+            <h3>الجري</h3>
+            <p>تمرين القلب والأوعية الدموية الأمثل لحرق الدهون وتحسين اللياقة البدنية.</p>
+            <div class="calories">🔥 600 سعرة / ساعة</div>
+            <button class="start-btn">ابدأ التمرين</button>
+        </div>
+
+        <div class="sport-card" onclick="openModal('cycling')">
+            <div class="sport-icon">🚴</div>
+            <h3>ركوب الدراجة</h3>
+            <p>رياضة ممتازة لتقوية عضلات الساقين وتحسين التحمل البدني.</p>
+            <div class="calories">🔥 500 سعرة / ساعة</div>
+            <button class="start-btn">ابدأ التمرين</button>
+        </div>
+
+        <div class="sport-card" onclick="openModal('swimming')">
+            <div class="sport-icon">🏊</div>
+            <h3>السباحة</h3>
+            <p>تمرين كامل للجسم يعمل على جميع العضلات مع حماية المفاصل.</p>
+            <div class="calories">🔥 700 سعرة / ساعة</div>
+            <button class="start-btn">ابدأ التمرين</button>
+        </div>
+
+        <div class="sport-card" onclick="openModal('yoga')">
+            <div class="sport-icon">🧘</div>
+            <h3>اليوغا</h3>
+            <p>تحسين المرونة والتوازن وتقليل التوتر والضغط النفسي.</p>
+            <div class="calories">🔥 250
