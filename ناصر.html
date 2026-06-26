@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لعبة ناصر</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      font-family: 'Arial', sans-serif;
+      color: white;
+      overflow: hidden;
+    }
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      text-shadow: 0 0 20px #f0c040;
+      color: #f0c040;
+    }
+    #score-board {
+      font-size: 1.2rem;
+      margin-bottom: 15px;
+      color: #aef;
+    }
+    #gameCanvas {
+      border: 3px solid #f0c040;
+      border-radius: 12px;
+      box-shadow: 0 0 30px #f0c04088;
+      background: #111;
+    }
+    #message {
+      margin-top: 15px;
+      font-size: 1.3rem;
+      color: #f0c040;
+      min-height: 30px;
+    }
+    #startBtn {
+      margin-top: 12px;
+      padding: 10px 30px;
+      font-size: 1.1rem;
+      background: #f0c040;
+      color: #111;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: 0.2s;
+    }
+    #startBtn:hover { background: #ffd700; transform: scale(1.05); }
+  </style>
+</head>
+<body>
+  <h1>🌟 لعبة ناصر 🌟</h1>
+  <div id="score-board">النقاط: <span id="score">0</span> &nbsp;|&nbsp; أعلى نقاط: <span id="highscore">0</span></div>
+  <canvas id="gameCanvas" width="480" height="400"></canvas>
+  <div id="message">اضغط ابدأ للعب!</div>
+  <button id="startBtn" onclick="startGame()">🎮 ابدأ</button>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let naser, stars, bullets, enemies, score, highscore, gameLoop, running;
+    highscore = 0;
+
+    function initGame() {
+      naser = { x: 220, y: 340, w: 40, h: 40, speed: 6 };
+      stars = Array.from({length: 60}, () => ({
+        x: Math.random() * 480,
+        y: Math.random() * 400,
+        r: Math.random() * 2 + 0.5,
+        speed: Math.random() * 1.5 + 0.5
+      }));
+      bullets = [];
+      enemies = [];
+      score = 0;
+      running = true;
+      document.getElementById('score').textContent = 0;
+      document.getElementById('message').textContent = '';
+    }
+
+    const keys = {};
+    document.addEventListener('keydown', e => {
+      keys[e.key] = true;
+      if (e.key === ' ' && running) shootBullet();
+    });
+    document.addEventListener('keyup', e => keys[e.key] = false);
+
+    function shootBullet() {
+      bullets.push({ x: naser.x + naser.w / 2 - 4, y: naser.y, w: 8, h: 18, speed: 9 });
+    }
+
+    let enemyTimer = 0;
+    function spawnEnemy() {
+      enemies.push({
+        x: Math.random() * 430,
+        y: -40,
+        w: 38,
+        h: 38,
+        speed: 1.5 + Math.random() * 2 + score * 0.01
+      });
+    }
+
+    function drawStars() {
+      stars.forEach(s => {
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff88';
+        ctx.fill();
+        s.y += s.speed;
+        if (s.y > 400) { s.y = 0; s.x = Math.random() * 480; }
+      });
+    }
+
+    function drawNaser() {
+      // رسم ناصر كسفينة
+      ctx.save();
+      // جسم السفينة
+      ctx.fillStyle = '#f0c040';
+      ctx.beginPath();
+      ctx.moveTo(naser.x + naser.w / 2, naser.y);
+      ctx.lineTo(naser.x + naser.w, naser.y + naser.h);
+      ctx.lineTo(naser.x, naser.y + naser.h);
+      ctx.closePath();
+      ctx.fill();
+      // نص ناصر
+      ctx.fillStyle = '#111';
+      ctx.font = 'bold 9px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('ناصر', naser.x + naser.w / 2, naser.y + naser.h - 10);
+      // محرك
+      ctx.fillStyle = '#ff6600';
+      ctx.fillRect(naser.x + 12, naser.y + naser.h, 6, 8);
+      ctx.fillRect(naser.x + naser.w - 18, naser.y + naser.h, 6, 8);
+      ctx.restore();
+    }
+
+    function drawBullets() {
+      bullets.forEach(b => {
+        ctx.fillStyle = '#00ffff';
+        ctx.shadowColor = '#00ffff';
+        ctx.shadowBlur = 10;
+        ctx.fillRect(b.x, b.y, b.w, b.h);
+        ctx.shadowBlur = 0;
+      });
+    }
+
+    function drawEnemies() {
+      enemies.forEach(e => {
+        ctx.save();
+        ctx.fillStyle = '#ff4444';
+        ctx.beginPath();
+        ctx.moveTo(e.x + e.w / 2, e.y + e.h);
+        ctx.lineTo(e.x + e.w, e.y);
+        ctx.lineTo(e.x, e.y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 9px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('عدو', e.x + e.w / 2, e.y + 14);
+        ctx.restore();
+      });
+    }
+
+    function checkCollisions() {
+      // رصاصة تصطدم بعدو
+      bullets.forEach((b, bi) => {
+        enemies.forEach((e, ei) => {
+          if (b.x < e.x + e.w && b.x + b.w > e.x && b.y < e.y + e.h && b.y + b.h > e.y) {
+            bullets.splice(bi, 1);
+            enemies.splice(ei, 1);
+            score += 10;
+            document.getElementById('score').textContent = score;
+            if (score > highscore) {
+              highscore = score;
+              document.getElementById('highscore').textContent = highscore;
+            }
+          }
+        });
+      });
+      // عدو يصطدم بناصر
+      enemies.forEach(e => {
+        if (naser.x < e.x + e.w && naser.x + naser.w > e.x && naser.y < e.y + e.h && naser.y + naser.h > e.y) {
+          endGame();
+        }
+      });
+    }
+
+    function endGame() {
+      running = false;
+      cancelAnimationFrame(gameLoop);
+      document.getElementById('message').textContent = '💥 انتهت اللعبة! ناصر بطل دائماً 🏆';
+      document.getElementById('startBtn').textContent = '🔄 العب مجدداً';
+    }
+
+    function update() {
+      if (!running) return;
+
+      // حركة ناصر
+      if ((keys['ArrowLeft'] || keys['a']) && naser.x > 0) naser.x -= naser.speed;
+      if ((keys['ArrowRight'] || keys['d']) && naser.x + naser.w < 480) naser.x += naser.speed;
+      if ((keys['ArrowUp'] || keys['w']) && naser.y > 0) naser.y -= naser.speed;
+      if ((keys['ArrowDown'] || keys['s']) && naser.y + naser.h < 400) naser.y += naser.speed;
+
+      // تحريك الرصاصات
+      bullets.forEach(b => b.y -= b.speed);
+      bullets = bullets.filter(b => b.y > -20);
+
+      // تحريك الأعداء
+      enemies.forEach(e => e.y += e.speed);
+      enemies = enemies.filter(e => e.y < 450);
+
+      // توليد أعداء
+      enemyTimer++;
+      if (enemyTimer > 60) { spawnEnemy(); enemyTimer = 0; }
+
+      checkCollisions();
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, 480, 400);
+      drawStars();
+      drawBullets();
+      drawEnemies();
+      drawNaser();
+    }
+
+    function loop() {
+      update();
+      draw();
+      if (running) gameLoop = requestAnimationFrame(loop);
+    }
+
+    function startGame() {
+      cancelAnimationFrame(gameLoop);
+      initGame();
+      document.getElementById('startBtn').textContent = '🎮 ابدأ';
+      loop();
+    }
+
+    // رسم شاشة البداية
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0, 0, 480, 400);
+    ctx.fillStyle = '#f0c040';
+    ctx.font = 'bold 28px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('🌟 مرحباً يا ناصر! 🌟', 240, 180);
+    ctx.fillStyle = '#aef';
+    ctx.font = '16px Arial';
+    ctx.fillText('اضغط ابدأ للعب', 240, 220);
+  </script>
+</body>
+</html>
