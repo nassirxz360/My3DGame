@@ -1,1 +1,1 @@
-[]
+[{"role":"user","content":"احذف ملف car و foryou و helo و index"},{"role":"assistant","content":"{\"action\":\"confirm_delete\",\"path\":\"\",\"content\":\"هل تريد حذف هذه الملفات؟\\n- car.gd\\n- foryou.html\\n- helo.html\\n- index.html\",\"files\":[\"car.gd\",\"foryou.html\",\"helo.html\",\"index.html\"]}","files":["car.gd","foryou.html","helo.html","index.html"]}]
