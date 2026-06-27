@@ -1,1 +1,1 @@
-[{"role":"user","content":"نعم"},{"role":"assistant","content":"{\"action\":\"none\",\"path\":\"\",\"content\":\"لم أفهم طلبك بشكل كافٍ 😊\\n\\nهل تقصد تأكيد حذف ملفات معينة؟ أم تريد شيئاً آخر؟\\n\\nملفاتك الحالية هي:\\n- car.gd\\n- foryou.html\\n- helo.html\\n- index.html\\n- ناصر.html\\n\\nأخبرني كيف أساعدك!\"}","files":[]}]
+[{"role":"user","content":"نعم"},{"role":"assistant","content":"{\"action\":\"none\",\"path\":\"\",\"content\":\"لم تكن هناك عملية حذف معلقة تحتاج تأكيداً. هل تريد حذف ملفات معينة؟ أخبرني ماذا تريد فعله! 😊\"}","files":[]}]
