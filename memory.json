@@ -1,1 +1,1 @@
-{"history":[{"role":"user","content":"احذف ملف car و foryou و helo و index"},{"role":"assistant","content":"هل تريد حذف هذه الملفات:\n- car.gd\n- foryou.html\n- helo.html\n- index.html"}],"pending_delete":["car.gd","foryou.html","helo.html","index.html"]}
+{"history":[{"role":"user","content":"نعم"},{"role":"assistant","content":"لم أفهم طلبك بشكل كافٍ 😊\n\nهل تريد حذف ملفات معينة؟ أو تريد مني القيام بشيء آخر؟\n\nأخبرني بالتفصيل ماذا تريد وسأساعدك فوراً!"}],"pending_delete":[]}
