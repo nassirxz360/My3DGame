@@ -1,1 +1,1 @@
-[]
+{"history":[{"role":"user","content":"احذف ملف car و foryou و helo و index"},{"role":"assistant","content":"هل تريد حذف هذه الملفات:\n- car.gd\n- foryou.html\n- helo.html\n- index.html"}],"pending_delete":["car.gd","foryou.html","helo.html","index.html"]}
