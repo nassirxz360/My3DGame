@@ -99,18 +99,18 @@ const player = {
   reloading: false,
   inCar: false,
   currentWeapon: 0,
-  weapons: [
-    { name: 'Fists', ammo: -1, maxAmmo: -1, damage: 15, range: 3, fireRate: 500, lastShot: 0 },
-    { name: 'Pistol', ammo: 30, maxAmmo: 30, damage: 35, range: 50, fireRate: 400, lastShot: 0 },
-    { name: 'Pistol', ammo: 30, maxAmmo: 30, damage: 35, range: 50, fireRate: 400, lastShot: 0 },
-    { name: 'AK-47', ammo: 90, maxAmmo: 90, damage: 25, range: 80, fireRate: 100, lastShot: 0 },
-    { name: 'Sniper', ammo: 10, maxAmmo: 10, damage: 120, range: 200, fireRate: 1500, lastShot: 0 },
-    { name: 'Shotgun', ammo: 24, maxAmmo: 24, damage: 80, range: 15, fireRate: 800, lastShot: 0 },
-    { name: 'RPG', ammo: 5, maxAmmo: 5, damage: 200, range: 150, fireRate: 2000, lastShot: 0 }
-  height: 1.8,
-  radius: 0.4
+    weapons: [
+      { name: 'Fists', ammo: -1, maxAmmo: -1, damage: 15, range: 3, fireRate: 500, lastShot: 0 },
+      { name: 'Pistol', ammo: 30, maxAmmo: 30, damage: 35, range: 50, fireRate: 400, lastShot: 0 },
+      { name: 'AK-47', ammo: 90, maxAmmo: 90, damage: 25, range: 80, fireRate: 100, lastShot: 0 },
+      { name: 'Sniper', ammo: 10, maxAmmo: 10, damage: 120, range: 200, fireRate: 1500, lastShot: 0 },
+      { name: 'Shotgun', ammo: 24, maxAmmo: 24, damage: 80, range: 15, fireRate: 800, lastShot: 0 },
+      { name: 'RPG', ammo: 5, maxAmmo: 5, damage: 200, range: 150, fireRate: 2000, lastShot: 0 }
+    ],
+    height: 1.8,
+    radius: 0.4
+  };
 };
-
 // ===== CAMERA =====
 const camera = {
   x: 0, y: 1.8, z: 0,
@@ -258,7 +258,7 @@ function dist2D(x1,z1,x2,z2){ return Math.sqrt((x1-x2)**2+(z1-z2)**2); }
 function dist3D(a,b){ return Math.sqrt((a.x-b.x)**2+(a.y-b.y)**2+(a.z-b.z)**2); }
 
 // ===== WORLD GENERATION =====
-function generateWorld() {
+  function generateWorld() {
   // Roads
   for (let i = -5; i <= 5; i++) {
     roads.push({ x: i * 40, z: -200, w: 12, l: 400, dir: 'z' });
@@ -334,6 +334,7 @@ function generateWorld() {
       rot: 0
     });
   }
+}
 
 // ===== WEATHER UPDATE =====
 function updateWeather(dt) {
@@ -1311,7 +1312,6 @@ function checkBuildingCollision(nx, nz) {
   return false;
 }
 
-// ===== SHOOTING =====
 function shoot() {
   const w = player.weapons[player.currentWeapon];
   const now = Date.now();
@@ -1382,20 +1382,6 @@ function shoot() {
       }
       checkAchievements();
     }
-      game.wanted = Math.min(5, game.wanted + 1);
-      game.wantedTimer = 30;
-      showNotification('+$50 Eliminated!');
-      for (let i = 0; i < 15; i++) {
-        particles.push({
-          x: hitNPC.x, y: hitNPC.y+1, z: hitNPC.z,
-          vx: (Math.random()-0.5)*0.5,
-          vy: Math.random()*0.5,
-          vz: (Math.random()-0.5)*0.5,
-          life: 1, maxLife: 1,
-          color: '#FF0000', size: 0.2
-        });
-      }
-    }
     bullets.push({
       x: camera.x+dirX*hitDist, y: camera.y+dirY*hitDist, z: camera.z+dirZ*hitDist,
       life: 0.5, maxLife: 0.5, color: '#FF4400', size: 0.3
@@ -1403,6 +1389,7 @@ function shoot() {
   }
   scoreSystem.shotsFired++;
   checkAchievements();
+}
 
 // ===== NOTIFICATION =====
 function showNotification(msg) {
@@ -1539,7 +1526,12 @@ function update(timestamp) {
   if (keys['Digit3']) player.currentWeapon = 2;
   if (keys['Digit4']) player.currentWeapon = 3;
   if (keys['Digit5']) player.currentWeapon = 4;
-  if (keys['KeyT']) statsVisible = !statsVisible;
+  if (keys['Digit6']) player.currentWeapon = 5;
+  if (keys['KeyT']) { keys['KeyT'] = false; statsVisible = !statsVisible; }
+  if (keys['KeyG']) {
+    keys['KeyG'] = false;
+    createExplosion(player.x + Math.sin(camera.rotY)*10, 0, player.z + Math.cos(camera.rotY)*10, 5);
+  }
   if (keys['KeyG']) {
     keys['KeyG'] = false;
     createExplosion(player.x + Math.sin(camera.rotY)*10, 0, player.z + Math.cos(camera.rotY)*10, 5);
@@ -2090,7 +2082,7 @@ function render() {
 }
 
 // ===== INPUT HANDLERS =====
-document.addEventListener('keydown', e => { keys[e.code] = true; e.preventDefault(); });
+document.addEventListener('keydown', e => { keys[e.code] = true; if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault(); });
 document.addEventListener('keyup', e => { keys[e.code] = false; });
 
 canvas.addEventListener('click', () => {
@@ -2197,13 +2189,10 @@ document.addEventListener('keydown', e => {
     showNotification(game.paused ? '⏸ PAUSED' : '▶ RESUMED');
   }
 });
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-});
 
 // ===== GAME LOOP =====
 function gameLoop(timestamp) {
-  update(timestamp);
+  if (!game.paused) update(timestamp);
   render();
   requestAnimationFrame(gameLoop);
 }
