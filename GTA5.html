@@ -727,10 +727,25 @@ function drawParticle(p) {
 }
 
 function drawGround() {
-  // Simple ground plane using horizon
-  const horizon = canvas.height * 0.5;
-  ctx.fillStyle = '#3A5A3A';
-  ctx.fillRect(0, horizon, canvas.width, canvas.height - horizon);
+  // Sky gradient background
+  const horizonY = canvas.height * 0.5 + camera.rotX * canvas.height * 0.8;
+  
+  // Sky
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, horizonY);
+  const skyColor = getSkyColor();
+  skyGrad.addColorStop(0, skyColor);
+  skyGrad.addColorStop(1, '#87CEEB');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, canvas.width, horizonY);
+  
+  // Ground
+  const groundGrad = ctx.createLinearGradient(0, horizonY, 0, canvas.height);
+  groundGrad.addColorStop(0, '#4A7A4A');
+  groundGrad.addColorStop(0.3, '#3A5A3A');
+  groundGrad.addColorStop(1, '#2A3A2A');
+  ctx.fillStyle = groundGrad;
+  ctx.fillRect(0, horizonY, canvas.width, canvas.height - horizonY);
+  
   // Road markings
   for (const road of roads) {
     const p1 = road.dir === 'z' ?
@@ -840,14 +855,43 @@ function drawMinimap() {
 
 function render() {
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  // Sky
+  
+  // Sky gradient
+  const horizonY = canvas.height * 0.5 + camera.rotX * canvas.height * 0.8;
   const skyColor = getSkyColor();
-  const grad = ctx.createLinearGradient(0,0,0,canvas.height*0.6);
+  const grad = ctx.createLinearGradient(0, 0, 0, Math.max(horizonY, 1));
   grad.addColorStop(0, skyColor);
   grad.addColorStop(1, '#87CEEB');
   ctx.fillStyle = grad;
-  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // Ground
+  const groundGrad = ctx.createLinearGradient(0, horizonY, 0, canvas.height);
+  groundGrad.addColorStop(0, '#4A7A4A');
+  groundGrad.addColorStop(0.5, '#3A5A3A');
+  groundGrad.addColorStop(1, '#2A3A2A');
+  ctx.fillStyle = groundGrad;
+  ctx.fillRect(0, horizonY, canvas.width, canvas.height - horizonY);
+  
   // Sun/Moon
+  const sunX = canvas.width * (0.5 + Math.cos(game.dayTime*Math.PI*2)*0.4);
+  const sunY = horizonY * (0.3 + (1 - Math.sin(game.dayTime*Math.PI*2))*0.35);
+  ctx.fillStyle = game.dayTime < 0.5 ? '#FFEEAA' : '#FFFAAA';
+  ctx.beginPath();
+  ctx.arc(sunX, sunY, 30, 0, Math.PI*2);
+  ctx.fill();
+  
+  // Glow around sun
+  const sunGlow = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, 80);
+  sunGlow.addColorStop(0, 'rgba(255,240,100,0.3)');
+  sunGlow.addColorStop(1, 'rgba(255,240,100,0)');
+  ctx.fillStyle = sunGlow;
+  ctx.beginPath();
+  ctx.arc(sunX, sunY, 80, 0, Math.PI*2);
+  ctx.fill();
+  
+  // Ground plane
+  drawGround();
   const sunX = canvas.width * (0.5 + Math.cos(game.dayTime*Math.PI*2)*0.4);
   const sunY = canvas.height * (0.3 - Math.sin(game.dayTime*Math.PI*2)*0.25);
   ctx.fillStyle = game.dayTime > 0.5 ? '#FFFAAA' : '#FFEEAA';
