@@ -102,8 +102,11 @@ const player = {
   weapons: [
     { name: 'Fists', ammo: -1, maxAmmo: -1, damage: 15, range: 3, fireRate: 500, lastShot: 0 },
     { name: 'Pistol', ammo: 30, maxAmmo: 30, damage: 35, range: 50, fireRate: 400, lastShot: 0 },
-    { name: 'AK-47', ammo: 90, maxAmmo: 90, damage: 25, range: 80, fireRate: 100, lastShot: 0 }
-  ],
+    { name: 'Pistol', ammo: 30, maxAmmo: 30, damage: 35, range: 50, fireRate: 400, lastShot: 0 },
+    { name: 'AK-47', ammo: 90, maxAmmo: 90, damage: 25, range: 80, fireRate: 100, lastShot: 0 },
+    { name: 'Sniper', ammo: 10, maxAmmo: 10, damage: 120, range: 200, fireRate: 1500, lastShot: 0 },
+    { name: 'Shotgun', ammo: 24, maxAmmo: 24, damage: 80, range: 15, fireRate: 800, lastShot: 0 },
+    { name: 'RPG', ammo: 5, maxAmmo: 5, damage: 200, range: 150, fireRate: 2000, lastShot: 0 }
   height: 1.8,
   radius: 0.4
 };
@@ -123,6 +126,92 @@ const mouse = { x: 0, y: 0, dx: 0, dy: 0, locked: false, buttons: {} };
 const joystick = { active: false, startX: 0, startY: 0, dx: 0, dy: 0, id: -1 };
 const camTouch = { active: false, startX: 0, startY: 0, id: -1 };
 const mobileButtons = { jump: false, shoot: false, run: false };
+
+// ===== WEATHER SYSTEM =====
+const weather = {
+  type: 'clear',
+  types: ['clear','rain','fog','storm'],
+  timer: 60,
+  rainDrops: [],
+  fogDensity: 0,
+  targetFog: 0,
+  windX: 0,
+  windZ: 0,
+  lightning: 0,
+  lightningTimer: 0,
+  thunder: 0
+};
+
+// ===== EXPLOSION SYSTEM =====
+const explosions = [];
+
+// ===== POLICE SYSTEM =====
+const police = [];
+const policeSpawnTimer = { t: 0 };
+
+// ===== MISSION SYSTEM =====
+const missions = [
+  { id:0, name:'First Blood', desc:'Eliminate 3 enemies', target:3, current:0, reward:500, active:false, done:false },
+  { id:1, name:'Cash Runner', desc:'Collect $1000', target:1000, current:0, reward:1000, active:false, done:false },
+  { id:2, name:'Survivor', desc:'Survive 5 minutes', target:300, current:0, reward:2000, active:false, done:false },
+  { id:3, name:'Road Rage', desc:'Destroy 2 cars', target:2, current:0, reward:750, active:false, done:false }
+];
+let activeMission = null;
+let missionKills = 0;
+let missionCarDestroy = 0;
+let surviveTimer = 0;
+
+// ===== SCORE SYSTEM =====
+const scoreSystem = {
+  kills: 0,
+  deaths: 0,
+  moneyEarned: 0,
+  distanceTraveled: 0,
+  shotsFired: 0,
+  accuracy: 0,
+  hits: 0,
+  combo: 0,
+  comboTimer: 0,
+  highScore: 0
+};
+
+// ===== DAY/NIGHT CYCLE =====
+const dayNight = {
+  streetLights: [],
+  lightsOn: false
+};
+
+// ===== SOUND SYSTEM (visual feedback) =====
+const soundVisuals = [];
+
+// ===== ACHIEVEMENT SYSTEM =====
+const achievements = [
+  { id:'first_kill', name:'First Blood', desc:'Kill your first enemy', icon:'🩸', done:false },
+  { id:'rich', name:'Millionaire', desc:'Earn $10000', icon:'💰', done:false },
+  { id:'survivor', name:'Survivor', desc:'Survive 10 minutes', icon:'🛡️', done:false },
+  { id:'sharpshooter', name:'Sharpshooter', desc:'Fire 100 shots', icon:'🎯', done:false },
+  { id:'wanted5', name:'Most Wanted', desc:'Reach 5 stars', icon:'⭐', done:false },
+  { id:'speedster', name:'Speedster', desc:'Run at full speed', icon:'🏃', done:false }
+];
+
+// ===== BLOOD DECALS =====
+const bloodDecals = [];
+
+// ===== FOOTSTEP SYSTEM =====
+let footstepTimer = 0;
+const footstepParticles = [];
+
+// ===== SMOKE SYSTEM =====
+const smokeParticles = [];
+
+// ===== FIRE SYSTEM =====
+const fireParticles = [];
+
+// ===== SKID MARKS =====
+const skidMarks = [];
+
+// ===== WANTED DISPLAY =====
+let wantedFlash = 0;
 
 // ===== WORLD OBJECTS =====
 const buildings = [];
@@ -245,6 +334,971 @@ function generateWorld() {
       rot: 0
     });
   }
+
+// ===== WEATHER UPDATE =====
+function updateWeather(dt) {
+  weather.timer -= dt;
+  if (weather.timer <= 0) {
+    weather.type = weather.types[Math.floor(Math.random()*weather.types.length)];
+    weather.timer = 30 + Math.random()*90;
+    if (weather.type === 'rain' || weather.type === 'storm') {
+      weather.targetFog = 0.3 + Math.random()*0.3;
+      weather.windX = (Math.random()-0.5)*0.5;
+      weather.windZ = (Math.random()-0.5)*0.5;
+    } else if (weather.type === 'fog') {
+      weather.targetFog = 0.6 + Math.random()*0.3;
+      weather.windX = 0; weather.windZ = 0;
+    } else {
+      weather.targetFog = 0;
+      weather.windX = 0; weather.windZ = 0;
+    }
+    showNotification('Weather: ' + weather.type.toUpperCase());
+  }
+  weather.fogDensity += (weather.targetFog - weather.fogDensity) * dt * 0.5;
+  if (weather.type === 'rain' || weather.type === 'storm') {
+    const count = weather.type === 'storm' ? 8 : 4;
+    for (let i = 0; i < count; i++) {
+      weather.rainDrops.push({
+        x: Math.random()*canvas.width,
+        y: -10,
+        vy: 8 + Math.random()*6,
+        vx: weather.windX * 60,
+        life: 1
+      });
+    }
+  }
+  for (let i = weather.rainDrops.length-1; i >= 0; i--) {
+    const d = weather.rainDrops[i];
+    d.x += d.vx * dt;
+    d.y += d.vy * (canvas.height/100) * dt * 60;
+    if (d.y > canvas.height) weather.rainDrops.splice(i,1);
+  }
+  if (weather.type === 'storm') {
+    weather.lightningTimer -= dt;
+    if (weather.lightningTimer <= 0) {
+      weather.lightning = 0.5;
+      weather.lightningTimer = 3 + Math.random()*7;
+    }
+    if (weather.lightning > 0) weather.lightning -= dt * 3;
+  }
+}
+
+// ===== DRAW WEATHER =====
+function drawWeather() {
+  if (weather.fogDensity > 0.01) {
+    ctx.fillStyle = `rgba(200,210,220,${weather.fogDensity})`;
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+  }
+  if (weather.type === 'rain' || weather.type === 'storm') {
+    ctx.strokeStyle = 'rgba(150,180,255,0.6)';
+    ctx.lineWidth = 1;
+    for (const d of weather.rainDrops) {
+      ctx.beginPath();
+      ctx.moveTo(d.x, d.y);
+      ctx.lineTo(d.x + d.vx*0.05, d.y + 10);
+      ctx.stroke();
+    }
+  }
+  if (weather.lightning > 0) {
+    ctx.fillStyle = `rgba(255,255,255,${weather.lightning * 0.4})`;
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+  }
+}
+
+// ===== EXPLOSION =====
+function createExplosion(x, y, z, radius) {
+  explosions.push({ x, y, z, radius, maxRadius: radius, life: 1.5, maxLife: 1.5 });
+  for (let i = 0; i < 40; i++) {
+    const angle = Math.random()*Math.PI*2;
+    const speed = 1 + Math.random()*3;
+    particles.push({
+      x, y: y+0.5, z,
+      vx: Math.cos(angle)*speed*(Math.random()-0.5),
+      vy: 2 + Math.random()*4,
+      vz: Math.sin(angle)*speed*(Math.random()-0.5),
+      life: 1.5, maxLife: 1.5,
+      color: Math.random()>0.5?'#FF4400':'#FFAA00',
+      size: 0.3 + Math.random()*0.4
+    });
+  }
+  for (let i = 0; i < 20; i++) {
+    const angle = Math.random()*Math.PI*2;
+    smokeParticles.push({
+      x: x+(Math.random()-0.5)*radius,
+      y: y+1,
+      z: z+(Math.random()-0.5)*radius,
+      vx: (Math.random()-0.5)*0.3,
+      vy: 0.5+Math.random()*0.5,
+      vz: (Math.random()-0.5)*0.3,
+      life: 3+Math.random()*2, maxLife: 5,
+      size: 0.5+Math.random()*1
+    });
+  }
+  const distToPlayer = dist3D(player, {x,y,z});
+  if (distToPlayer < radius * 3) {
+    const dmg = Math.max(0, 80 - distToPlayer * 5);
+    takeDamage(dmg);
+  }
+  game.wanted = Math.min(5, game.wanted + 2);
+  game.wantedTimer = 40;
+}
+
+// ===== TAKE DAMAGE =====
+function takeDamage(amount) {
+  if (player.armor > 0) {
+    const absorbed = Math.min(player.armor, amount * 0.7);
+    player.armor -= absorbed;
+    amount -= absorbed;
+  }
+  player.health -= amount;
+  if (player.health <= 0) {
+    player.health = 0;
+    playerDeath();
+  }
+  // Screen flash red
+  soundVisuals.push({ type:'damage', life:0.3, maxLife:0.3 });
+}
+
+// ===== PLAYER DEATH =====
+function playerDeath() {
+  scoreSystem.deaths++;
+  showNotification('💀 YOU DIED! Respawning...');
+  setTimeout(() => {
+    player.x = 0; player.y = 1.8; player.z = 0;
+    player.health = 100; player.armor = 50;
+    player.vx = 0; player.vy = 0; player.vz = 0;
+    game.wanted = 0;
+    game.money = Math.max(0, game.money - 500);
+    showNotification('Respawned! Lost $500');
+  }, 2000);
+}
+
+// ===== POLICE SPAWN =====
+function spawnPolice() {
+  if (game.wanted < 2) return;
+  const angle = Math.random()*Math.PI*2;
+  const dist = 30 + Math.random()*20;
+  police.push({
+    x: player.x + Math.cos(angle)*dist,
+    y: 0,
+    z: player.z + Math.sin(angle)*dist,
+    vx: 0, vz: 0,
+    rotY: 0,
+    health: 100,
+    state: 'chase',
+    shootTimer: 1+Math.random()*2,
+    color: '#1144FF',
+    speed: 0.06 + game.wanted*0.01,
+    alertTimer: 30
+  });
+}
+
+// ===== UPDATE POLICE =====
+function updatePolice(dt) {
+  policeSpawnTimer.t -= dt;
+  if (policeSpawnTimer.t <= 0 && game.wanted >= 2) {
+    if (police.length < game.wanted * 2) spawnPolice();
+    policeSpawnTimer.t = 5;
+  }
+  for (let i = police.length-1; i >= 0; i--) {
+    const p = police[i];
+    if (p.health <= 0) { police.splice(i,1); continue; }
+    const dx = player.x - p.x;
+    const dz = player.z - p.z;
+    const d = Math.sqrt(dx*dx+dz*dz)||1;
+    p.rotY = Math.atan2(dx, dz);
+    if (d > 3) {
+      p.x += (dx/d)*p.speed*60*dt;
+      p.z += (dz/d)*p.speed*60*dt;
+    }
+    p.shootTimer -= dt;
+    if (p.shootTimer <= 0 && d < 25) {
+      p.shootTimer = 1.5 + Math.random()*1.5;
+      if (Math.random() < 0.4 + game.wanted*0.1) {
+        takeDamage(10 + game.wanted*3);
+        particles.push({
+          x: p.x, y: p.y+1, z: p.z,
+          vx:(Math.random()-0.5)*0.3, vy:0.2, vz:(Math.random()-0.5)*0.3,
+          life:0.3, maxLife:0.3, color:'#FFAA00', size:0.15
+        });
+      }
+    }
+    p.alertTimer -= dt;
+    if (p.alertTimer <= 0 || game.wanted === 0) police.splice(i,1);
+  }
+}
+
+// ===== DRAW POLICE =====
+function drawPolice(p) {
+  const d = dist3D(player, {x:p.x,y:p.y,z:p.z});
+  if (d > 80) return;
+  const bodyP = project3D(p.x, p.y+1, p.z);
+  if (!bodyP || bodyP.z < 0.5) return;
+  const s = bodyP.scale;
+  const bw = 40*s, bh = 60*s;
+  if (bw < 2) return;
+  ctx.fillStyle = '#1144FF';
+  ctx.fillRect(bodyP.x-bw/2, bodyP.y-bh/2, bw, bh);
+  const headP = project3D(p.x, p.y+1.9, p.z);
+  if (headP) {
+    ctx.fillStyle = '#FFCC99';
+    ctx.beginPath();
+    ctx.arc(headP.x, headP.y, 20*s, 0, Math.PI*2);
+    ctx.fill();
+    // Police hat
+    ctx.fillStyle = '#000088';
+    ctx.fillRect(headP.x-22*s, headP.y-22*s, 44*s, 10*s);
+  }
+  // Badge
+  if (s > 0.5) {
+    ctx.fillStyle = '#FFDD00';
+    ctx.font = `${Math.max(8,12*s)}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.fillText('POLICE', bodyP.x, bodyP.y);
+  }
+}
+
+// ===== DRAW SMOKE =====
+function drawSmoke() {
+  for (let i = smokeParticles.length-1; i >= 0; i--) {
+    const p = smokeParticles[i];
+    p.x += p.vx; p.y += p.vy*0.016; p.z += p.vz;
+    p.life -= 0.016;
+    if (p.life <= 0) { smokeParticles.splice(i,1); continue; }
+    const pp = project3D(p.x, p.y, p.z);
+    if (!pp) continue;
+    const alpha = (p.life/p.maxLife)*0.4;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = '#888888';
+    ctx.beginPath();
+    ctx.arc(pp.x, pp.y, p.size*pp.scale*40, 0, Math.PI*2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ===== DRAW FIRE =====
+function drawFire() {
+  for (let i = fireParticles.length-1; i >= 0; i--) {
+    const p = fireParticles[i];
+    p.x += p.vx; p.y += p.vy; p.z += p.vz;
+    p.life -= 0.016;
+    if (p.life <= 0) { fireParticles.splice(i,1); continue; }
+    const pp = project3D(p.x, p.y, p.z);
+    if (!pp) continue;
+    const alpha = p.life/p.maxLife;
+    ctx.globalAlpha = alpha;
+    const colors = ['#FF2200','#FF6600','#FFAA00','#FFFF00'];
+    ctx.fillStyle = colors[Math.floor(Math.random()*colors.length)];
+    ctx.beginPath();
+    ctx.arc(pp.x, pp.y, p.size*pp.scale*35, 0, Math.PI*2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ===== DRAW EXPLOSIONS =====
+function drawExplosions() {
+  for (let i = explosions.length-1; i >= 0; i--) {
+    const e = explosions[i];
+    e.life -= 0.016;
+    if (e.life <= 0) { explosions.splice(i,1); continue; }
+    const pp = project3D(e.x, e.y, e.z);
+    if (!pp) continue;
+    const progress = 1 - e.life/e.maxLife;
+    const r = e.radius * progress * pp.scale * 40;
+    const alpha = e.life/e.maxLife;
+    const grad = ctx.createRadialGradient(pp.x,pp.y,0,pp.x,pp.y,r);
+    grad.addColorStop(0,`rgba(255,255,200,${alpha})`);
+    grad.addColorStop(0.3,`rgba(255,100,0,${alpha*0.8})`);
+    grad.addColorStop(1,`rgba(100,50,0,0)`);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(pp.x,pp.y,r,0,Math.PI*2);
+    ctx.fill();
+  }
+}
+
+// ===== MISSION SYSTEM =====
+function startMission(id) {
+  if (missions[id].done) { showNotification('Mission already completed!'); return; }
+  activeMission = missions[id];
+  activeMission.active = true;
+  activeMission.current = 0;
+  showNotification('🎯 Mission: ' + activeMission.name + ' - ' + activeMission.desc);
+}
+
+function updateMissions(dt) {
+  if (!activeMission) {
+    if (Math.random() < 0.001) startMission(Math.floor(Math.random()*missions.length));
+    return;
+  }
+  if (activeMission.id === 2) {
+    activeMission.current += dt;
+    surviveTimer += dt;
+  }
+  if (activeMission.id === 1) {
+    activeMission.current = game.money;
+  }
+  if (activeMission.current >= activeMission.target) {
+    completeMission();
+  }
+}
+
+function completeMission() {
+  if (!activeMission) return;
+  game.money += activeMission.reward;
+  scoreSystem.moneyEarned += activeMission.reward;
+  showNotification('✅ Mission Complete! +$' + activeMission.reward);
+  activeMission.done = true;
+  activeMission.active = false;
+  activeMission = null;
+  setTimeout(() => {
+    const next = missions.find(m => !m.done);
+    if (next) startMission(next.id);
+  }, 5000);
+}
+
+// ===== ACHIEVEMENT CHECK =====
+function checkAchievements() {
+  if (!achievements[0].done && scoreSystem.kills >= 1) {
+    achievements[0].done = true;
+    showNotification('🏆 Achievement: ' + achievements[0].name);
+  }
+  if (!achievements[1].done && game.money >= 10000) {
+    achievements[1].done = true;
+    showNotification('🏆 Achievement: ' + achievements[1].name);
+  }
+  if (!achievements[2].done && game.time >= 600) {
+    achievements[2].done = true;
+    showNotification('🏆 Achievement: ' + achievements[2].name);
+  }
+  if (!achievements[3].done && scoreSystem.shotsFired >= 100) {
+    achievements[3].done = true;
+    showNotification('🏆 Achievement: ' + achievements[3].name);
+  }
+  if (!achievements[4].done && game.wanted >= 5) {
+    achievements[4].done = true;
+    showNotification('🏆 Achievement: ' + achievements[4].name);
+  }
+  if (!achievements[5].done && player.running && player.speed > 0) {
+    achievements[5].done = true;
+    showNotification('🏆 Achievement: ' + achievements[5].name);
+  }
+}
+
+// ===== FOOTSTEPS =====
+function updateFootsteps(dt) {
+  if (player.speed > 0 && player.onGround) {
+    footstepTimer -= dt;
+    if (footstepTimer <= 0) {
+      footstepTimer = player.running ? 0.25 : 0.45;
+      footstepParticles.push({
+        x: player.x + (Math.random()-0.5)*0.3,
+        y: 0.01,
+        z: player.z + (Math.random()-0.5)*0.3,
+        life: 2, maxLife: 2,
+        size: 0.15
+      });
+    }
+  }
+  for (let i = footstepParticles.length-1; i >= 0; i--) {
+    footstepParticles[i].life -= dt;
+    if (footstepParticles[i].life <= 0) footstepParticles.splice(i,1);
+  }
+}
+
+// ===== DRAW FOOTSTEPS =====
+function drawFootsteps() {
+  for (const fp of footstepParticles) {
+    const pp = project3D(fp.x, fp.y, fp.z);
+    if (!pp) continue;
+    ctx.globalAlpha = (fp.life/fp.maxLife)*0.4;
+    ctx.fillStyle = '#333';
+    ctx.beginPath();
+    ctx.ellipse(pp.x, pp.y, fp.size*pp.scale*30, fp.size*pp.scale*15, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ===== BLOOD DECALS =====
+function addBloodDecal(x, z) {
+  bloodDecals.push({ x, y:0.02, z, size:0.5+Math.random()*0.5, rot:Math.random()*Math.PI*2, life:30 });
+  if (bloodDecals.length > 50) bloodDecals.shift();
+}
+
+function drawBloodDecals() {
+  for (const bd of bloodDecals) {
+    const pp = project3D(bd.x, bd.y, bd.z);
+    if (!pp) continue;
+    ctx.globalAlpha = Math.min(1, bd.life/5)*0.7;
+    ctx.fillStyle = '#8B0000';
+    ctx.beginPath();
+    ctx.ellipse(pp.x, pp.y, bd.size*pp.scale*25, bd.size*pp.scale*15, bd.rot, 0, Math.PI*2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ===== DRAW HUD EXTRAS =====
+function drawHUDExtras() {
+  // Damage flash
+  for (let i = soundVisuals.length-1; i >= 0; i--) {
+    const sv = soundVisuals[i];
+    sv.life -= 0.016;
+    if (sv.life <= 0) { soundVisuals.splice(i,1); continue; }
+    if (sv.type === 'damage') {
+      ctx.fillStyle = `rgba(255,0,0,${(sv.life/sv.maxLife)*0.35})`;
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+    }
+  }
+  // Combo display
+  if (scoreSystem.combo > 1) {
+    ctx.fillStyle = `rgba(255,200,0,${Math.min(1,scoreSystem.comboTimer/2)})`;
+    ctx.font = 'bold 36px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('x' + scoreSystem.combo + ' COMBO!', canvas.width/2, canvas.height/2 - 80);
+  }
+  // Mission HUD
+  if (activeMission) {
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(canvas.width/2-150, 10, 300, 50);
+    ctx.fillStyle = '#FFCC00';
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('🎯 ' + activeMission.name, canvas.width/2, 28);
+    ctx.fillStyle = '#fff';
+    ctx.font = '12px Arial';
+    const prog = Math.min(1, activeMission.current/activeMission.target);
+    ctx.fillText(activeMission.desc + ' (' + Math.floor(prog*100) + '%)', canvas.width/2, 48);
+    // Progress bar
+    ctx.fillStyle = '#333';
+    ctx.fillRect(canvas.width/2-140, 52, 280, 6);
+    ctx.fillStyle = '#00FF88';
+    ctx.fillRect(canvas.width/2-140, 52, 280*prog, 6);
+  }
+  // Wanted flash
+  if (game.wanted >= 3) {
+    wantedFlash += 0.016;
+    if (Math.sin(wantedFlash*8) > 0.5) {
+      ctx.strokeStyle = 'rgba(255,0,0,0.4)';
+      ctx.lineWidth = 8;
+      ctx.strokeRect(4,4,canvas.width-8,canvas.height-8);
+    }
+  }
+  // Compass
+  drawCompass();
+  // Kill feed
+  drawKillFeed();
+  // Stats panel
+  drawStatsPanel();
+}
+
+// ===== COMPASS =====
+const compassEl = { visible: true };
+function drawCompass() {
+  const cx = canvas.width/2;
+  const cy = 30;
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(cx-80, cy-15, 160, 30);
+  const dirs = ['N','NE','E','SE','S','SW','W','NW'];
+  const angle = player.rotY;
+  ctx.fillStyle = '#fff';
+  ctx.font = '12px Arial';
+  ctx.textAlign = 'center';
+  for (let i = 0; i < 8; i++) {
+    const a = (i/8)*Math.PI*2 - angle;
+    const nx = cx + Math.sin(a)*60;
+    if (nx < cx-75 || nx > cx+75) continue;
+    ctx.fillStyle = dirs[i]==='N'?'#FF4444':'rgba(255,255,255,0.7)';
+    ctx.fillText(dirs[i], nx, cy+5);
+  }
+  ctx.fillStyle = '#FFCC00';
+  ctx.font = 'bold 14px Arial';
+  ctx.fillText('▼', cx, cy+6);
+}
+
+// ===== KILL FEED =====
+const killFeed = [];
+function addKillFeed(msg) {
+  killFeed.unshift({ msg, life: 4 });
+  if (killFeed.length > 5) killFeed.pop();
+}
+function drawKillFeed() {
+  for (let i = killFeed.length-1; i >= 0; i--) {
+    killFeed[i].life -= 0.016;
+    if (killFeed[i].life <= 0) { killFeed.splice(i,1); continue; }
+    const alpha = Math.min(1, killFeed[i].life);
+    ctx.fillStyle = `rgba(0,0,0,${alpha*0.6})`;
+    ctx.fillRect(canvas.width-260, 80+i*28, 250, 24);
+    ctx.fillStyle = `rgba(255,80,80,${alpha})`;
+    ctx.font = '13px Arial';
+    ctx.textAlign = 'right';
+    ctx.fillText(killFeed[i].msg, canvas.width-15, 97+i*28);
+  }
+}
+
+// ===== STATS PANEL =====
+let statsVisible = false;
+function drawStatsPanel() {
+  if (!statsVisible) return;
+  ctx.fillStyle = 'rgba(0,0,0,0.75)';
+  ctx.fillRect(canvas.width/2-150, canvas.height/2-120, 300, 240);
+  ctx.strokeStyle = '#FFCC00';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(canvas.width/2-150, canvas.height/2-120, 300, 240);
+  ctx.fillStyle = '#FFCC00';
+  ctx.font = 'bold 18px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText('📊 STATS', canvas.width/2, canvas.height/2-95);
+  const stats = [
+    ['Kills', scoreSystem.kills],
+    ['Deaths', scoreSystem.deaths],
+    ['Money Earned', '$'+scoreSystem.moneyEarned],
+    ['Shots Fired', scoreSystem.shotsFired],
+    ['Hits', scoreSystem.hits],
+    ['Accuracy', scoreSystem.shotsFired>0?Math.round(scoreSystem.hits/scoreSystem.shotsFired*100)+'%':'0%'],
+    ['Survive Time', Math.floor(game.time/60)+'m '+Math.floor(game.time%60)+'s'],
+    ['High Score', scoreSystem.highScore]
+  ];
+  ctx.font = '13px Arial';
+  stats.forEach((s,i) => {
+    ctx.fillStyle = '#aaa';
+    ctx.textAlign = 'left';
+    ctx.fillText(s[0], canvas.width/2-130, canvas.height/2-65+i*22);
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'right';
+    ctx.fillText(s[1], canvas.width/2+130, canvas.height/2-65+i*22);
+  });
+}
+
+// ===== DRAW STREET LIGHTS =====
+function initStreetLights() {
+  for (let i = -5; i <= 5; i++) {
+    for (let j = -5; j <= 5; j++) {
+      if (Math.abs(i)%2===0 || Math.abs(j)%2===0) {
+        dayNight.streetLights.push({ x: i*40+5, z: j*40+5, on: false });
+      }
+    }
+  }
+}
+
+function drawStreetLights() {
+  const isNight = game.dayTime > 0.6 || game.dayTime < 0.15;
+  dayNight.lightsOn = isNight;
+  for (const sl of dayNight.streetLights) {
+    const d = dist2D(player.x, player.z, sl.x, sl.z);
+    if (d > 80) continue;
+    // Pole
+    const base = project3D(sl.x, 0, sl.z);
+    const top = project3D(sl.x, 5, sl.z);
+    if (!base || !top) continue;
+    ctx.strokeStyle = '#888';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(base.x, base.y);
+    ctx.lineTo(top.x, top.y);
+    ctx.stroke();
+    // Light
+    if (isNight) {
+      ctx.fillStyle = '#FFFFAA';
+      ctx.beginPath();
+      ctx.arc(top.x, top.y, 5*top.scale*10, 0, Math.PI*2);
+      ctx.fill();
+      // Glow
+      const glow = ctx.createRadialGradient(top.x,top.y,0,top.x,top.y,30*top.scale*10);
+      glow.addColorStop(0,'rgba(255,255,150,0.3)');
+      glow.addColorStop(1,'rgba(255,255,150,0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(top.x,top.y,30*top.scale*10,0,Math.PI*2);
+      ctx.fill();
+    }
+  }
+}
+
+// ===== DRAW SKID MARKS =====
+function drawSkidMarks() {
+  for (let i = skidMarks.length-1; i >= 0; i--) {
+    const sm = skidMarks[i];
+    sm.life -= 0.016;
+    if (sm.life <= 0) { skidMarks.splice(i,1); continue; }
+    const pp = project3D(sm.x, 0.02, sm.z);
+    if (!pp) continue;
+    ctx.globalAlpha = Math.min(1,sm.life/2)*0.5;
+    ctx.fillStyle = '#222';
+    ctx.beginPath();
+    ctx.ellipse(pp.x, pp.y, sm.w*pp.scale*20, sm.w*pp.scale*8, sm.rot, 0, Math.PI*2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ===== DRAW WATER PUDDLES =====
+const puddles = [];
+function initPuddles() {
+  for (let i = 0; i < 15; i++) {
+    puddles.push({
+      x: (Math.random()-0.5)*200,
+      z: (Math.random()-0.5)*200,
+      r: 2+Math.random()*4
+    });
+  }
+}
+
+function drawPuddles() {
+  if (weather.type !== 'rain' && weather.type !== 'storm') return;
+  for (const pu of puddles) {
+    const d = dist2D(player.x, player.z, pu.x, pu.z);
+    if (d > 60) continue;
+    const pp = project3D(pu.x, 0.02, pu.z);
+    if (!pp) continue;
+    ctx.globalAlpha = 0.4;
+    ctx.fillStyle = '#4488AA';
+    ctx.beginPath();
+    ctx.ellipse(pp.x, pp.y, pu.r*pp.scale*30, pu.r*pp.scale*10, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ===== DRAW POWER LINES =====
+function drawPowerLines() {
+  for (let i = -4; i < 4; i++) {
+    const x1 = i*40; const x2 = (i+1)*40;
+    const p1 = project3D(x1, 8, -20);
+    const p2 = project3D(x2, 8, -20);
+    if (!p1 || !p2) continue;
+    ctx.strokeStyle = 'rgba(50,50,50,0.8)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    const mx = (p1.x+p2.x)/2;
+    const my = (p1.y+p2.y)/2 + 10;
+    ctx.quadraticCurveTo(mx, my, p2.x, p2.y);
+    ctx.stroke();
+  }
+}
+
+// ===== DRAW CLOUDS =====
+const clouds = [];
+function initClouds() {
+  for (let i = 0; i < 12; i++) {
+    clouds.push({
+      x: (Math.random()-0.5)*400,
+      y: 40+Math.random()*30,
+      z: (Math.random()-0.5)*400,
+      w: 20+Math.random()*30,
+      speed: 0.02+Math.random()*0.03
+    });
+  }
+}
+
+function drawClouds() {
+  if (game.dayTime > 0.6 && game.dayTime < 0.85) return;
+  for (const cl of clouds) {
+    cl.x += cl.speed * (weather.windX||0.02);
+    if (cl.x > 300) cl.x = -300;
+    const d = dist2D(player.x, player.z, cl.x, cl.z);
+    if (d > 250) continue;
+    const pp = project3D(cl.x, cl.y, cl.z);
+    if (!pp || pp.y > canvas.height*0.6) continue;
+    ctx.globalAlpha = 0.6;
+    ctx.fillStyle = weather.type==='storm'?'#555':'#EEE';
+    ctx.beginPath();
+    ctx.ellipse(pp.x, pp.y, cl.w*pp.scale*15, cl.w*pp.scale*6, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(pp.x-cl.w*pp.scale*5, pp.y+2, cl.w*pp.scale*10, cl.w*pp.scale*5, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ===== DRAW BIRDS =====
+const birds = [];
+function initBirds() {
+  for (let i = 0; i < 8; i++) {
+    birds.push({
+      x: (Math.random()-0.5)*200,
+      y: 20+Math.random()*15,
+      z: (Math.random()-0.5)*200,
+      vx: (Math.random()-0.5)*0.5,
+      vz: (Math.random()-0.5)*0.5,
+      wingPhase: Math.random()*Math.PI*2
+    });
+  }
+}
+
+function drawBirds() {
+  for (const b of birds) {
+    b.x += b.vx;
+    b.z += b.vz;
+    b.wingPhase += 0.1;
+    if (b.x > 200) b.x = -200;
+    if (b.z > 200) b.z = -200;
+    const pp = project3D(b.x, b.y, b.z);
+    if (!pp || pp.y > canvas.height*0.7) continue;
+    const s = pp.scale*20;
+    if (s < 1) continue;
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    const wing = Math.sin(b.wingPhase)*5*s;
+    ctx.moveTo(pp.x-8*s, pp.y+wing);
+    ctx.lineTo(pp.x, pp.y);
+    ctx.lineTo(pp.x+8*s, pp.y+wing);
+    ctx.stroke();
+  }
+}
+
+// ===== DRAW STARS =====
+const stars3D = [];
+function initStars() {
+  for (let i = 0; i < 200; i++) {
+    stars3D.push({
+      x: (Math.random()-0.5)*600,
+      y: 80+Math.random()*100,
+      z: (Math.random()-0.5)*600,
+      size: 0.5+Math.random()*1.5,
+      twinkle: Math.random()*Math.PI*2
+    });
+  }
+}
+
+function drawStars() {
+  if (game.dayTime > 0.15 && game.dayTime < 0.75) return;
+  const nightFactor = game.dayTime > 0.75 ? (game.dayTime-0.75)/0.25 : game.dayTime < 0.1 ? game.dayTime/0.1 : 1;
+  for (const st of stars3D) {
+    st.twinkle += 0.02;
+    const pp = project3D(st.x + player.x*0.01, st.y, st.z + player.z*0.01);
+    if (!pp || pp.y > canvas.height*0.55) continue;
+    const alpha = nightFactor * (0.5 + Math.sin(st.twinkle)*0.5);
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.arc(pp.x, pp.y, st.size, 0, Math.PI*2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ===== DRAW MOON =====
+function drawMoon() {
+  if (game.dayTime > 0.15 && game.dayTime < 0.75) return;
+  const moonX = canvas.width * (0.5 - Math.cos(game.dayTime*Math.PI*2)*0.4);
+  const horizonY = canvas.height * 0.5 + camera.rotX * canvas.height * 0.8;
+  const moonY = horizonY * (0.2 + Math.cos(game.dayTime*Math.PI*2)*0.3);
+  ctx.fillStyle = '#DDDDFF';
+  ctx.beginPath();
+  ctx.arc(moonX, moonY, 20, 0, Math.PI*2);
+  ctx.fill();
+  ctx.fillStyle = '#BBBBDD';
+  ctx.beginPath();
+  ctx.arc(moonX+5, moonY-3, 6, 0, Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(moonX-4, moonY+5, 4, 0, Math.PI*2);
+  ctx.fill();
+}
+
+// ===== DRAW GRAFFITI =====
+const graffitiSpots = [];
+function initGraffiti() {
+  const msgs = ['GTA5','LSPD','GROVE ST','BALLAS','VAGOS','NO COPS'];
+  for (let i = 0; i < 20; i++) {
+    graffitiSpots.push({
+      x: (Math.random()-0.5)*200,
+      z: (Math.random()-0.5)*200,
+      msg: msgs[Math.floor(Math.random()*msgs.length)],
+      color: `hsl(${Math.random()*360},80%,60%)`
+    });
+  }
+}
+
+function drawGraffiti() {
+  for (const g of graffitiSpots) {
+    const d = dist2D(player.x, player.z, g.x, g.z);
+    if (d > 30) continue;
+    const pp = project3D(g.x, 1.5, g.z);
+    if (!pp || pp.scale < 0.5) continue;
+    ctx.fillStyle = g.color;
+    ctx.font = `bold ${Math.min(20,16*pp.scale)}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.globalAlpha = Math.min(1, pp.scale);
+    ctx.fillText(g.msg, pp.x, pp.y);
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ===== DRAW TRASH =====
+const trashItems = [];
+function initTrash() {
+  for (let i = 0; i < 30; i++) {
+    trashItems.push({
+      x: (Math.random()-0.5)*200,
+      z: (Math.random()-0.5)*200,
+      type: Math.random()>0.5?'can':'paper',
+      rot: Math.random()*Math.PI*2
+    });
+  }
+}
+
+function drawTrash() {
+  for (const t of trashItems) {
+    const d = dist2D(player.x, player.z, t.x, t.z);
+    if (d > 20) continue;
+    const pp = project3D(t.x, 0.1, t.z);
+    if (!pp || pp.scale < 1) continue;
+    ctx.fillStyle = t.type==='can'?'#CC4400':'#DDDDCC';
+    ctx.beginPath();
+    if (t.type==='can') ctx.arc(pp.x, pp.y, 3*pp.scale, 0, Math.PI*2);
+    else ctx.fillRect(pp.x-4*pp.scale, pp.y-2*pp.scale, 8*pp.scale, 4*pp.scale);
+    ctx.fill();
+  }
+}
+
+// ===== DRAW FENCES =====
+function drawFences() {
+  const fencePositions = [
+    {x1:-50,z1:-50,x2:50,z2:-50},
+    {x1:50,z1:-50,x2:50,z2:50}
+  ];
+  for (const f of fencePositions) {
+    const p1 = project3D(f.x1, 1.2, f.z1);
+    const p2 = project3D(f.x2, 1.2, f.z2);
+    if (!p1 || !p2) continue;
+    ctx.strokeStyle = '#8B6914';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.stroke();
+    const steps = 8;
+    for (let i = 0; i <= steps; i++) {
+      const t = i/steps;
+      const px = f.x1+(f.x2-f.x1)*t;
+      const pz = f.z1+(f.z2-f.z1)*t;
+      const pt = project3D(px, 1.5, pz);
+      const pb = project3D(px, 0, pz);
+      if (!pt || !pb) continue;
+      ctx.strokeStyle = '#6B4914';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(pt.x, pt.y);
+      ctx.lineTo(pb.x, pb.y);
+      ctx.stroke();
+    }
+  }
+}
+
+// ===== DRAW HELICOPTER =====
+const helicopter = {
+  x: 50, y: 30, z: 50,
+  vx: 0.1, vz: 0.1,
+  rotorPhase: 0,
+  active: false,
+  searchLight: false
+};
+
+function updateHelicopter(dt) {
+  if (game.wanted < 4) { helicopter.active = false; return; }
+  helicopter.active = true;
+  helicopter.rotorPhase += dt*10;
+  helicopter.x += helicopter.vx;
+  helicopter.z += helicopter.vz;
+  const dx = player.x - helicopter.x;
+  const dz = player.z - helicopter.z;
+  const d = Math.sqrt(dx*dx+dz*dz);
+  if (d > 5) {
+    helicopter.vx = (dx/d)*0.3;
+    helicopter.vz = (dz/d)*0.3;
+  }
+  helicopter.searchLight = true;
+}
+
+function drawHelicopter() {
+  if (!helicopter.active) return;
+  const pp = project3D(helicopter.x, helicopter.y, helicopter.z);
+  if (!pp) return;
+  const s = pp.scale;
+  // Body
+  ctx.fillStyle = '#333';
+  ctx.fillRect(pp.x-20*s, pp.y-8*s, 40*s, 16*s);
+  // Rotor
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 2;
+  ctx.save();
+  ctx.translate(pp.x, pp.y-8*s);
+  ctx.rotate(helicopter.rotorPhase);
+  ctx.beginPath();
+  ctx.moveTo(-30*s, 0);
+  ctx.lineTo(30*s, 0);
+  ctx.stroke();
+  ctx.restore();
+  // Searchlight
+  if (helicopter.searchLight) {
+    const sp = project3D(helicopter.x, 0, helicopter.z);
+    if (sp) {
+      const grad = ctx.createLinearGradient(pp.x, pp.y, sp.x, sp.y);
+      grad.addColorStop(0,'rgba(255,255,200,0.3)');
+      grad.addColorStop(1,'rgba(255,255,200,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(pp.x-5*s, pp.y);
+      ctx.lineTo(sp.x-20, sp.y);
+      ctx.lineTo(sp.x+20, sp.y);
+      ctx.lineTo(pp.x+5*s, pp.y);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+  // Police label
+  ctx.fillStyle = '#0044FF';
+  ctx.font = `bold ${Math.max(8,10*s)}px Arial`;
+  ctx.textAlign = 'center';
+  ctx.fillText('POLICE', pp.x, pp.y+4);
+}
+
+// ===== DRAW WANTED METER =====
+function drawWantedMeter() {
+  const wx = canvas.width - 180;
+  const wy = 90;
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(wx-5, wy-5, 170, 35);
+  for (let i = 0; i < 5; i++) {
+    const filled = i < game.wanted;
+    const flash = filled && game.wanted >= 3 && Math.sin(wantedFlash*8) > 0;
+    ctx.fillStyle = flash ? '#FF0000' : filled ? '#FF4400' : '#333';
+    ctx.fillRect(wx + i*32, wy, 28, 25);
+    ctx.fillStyle = '#FFCC00';
+    ctx.font = '16px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('★', wx+i*32+14, wy+18);
+  }
+}
+
+// ===== DRAW DAMAGE NUMBERS =====
+const damageNumbers = [];
+function addDamageNumber(x, y, z, amount, color) {
+  damageNumbers.push({ x, y, z, amount, color: color||'#FF4444', life: 1.5, maxLife: 1.5, vy: 0.02 });
+}
+function drawDamageNumbers() {
+  for (let i = damageNumbers.length-1; i >= 0; i--) {
+    const dn = damageNumbers[i];
+    dn.life -= 0.016;
+    dn.y += dn.vy;
+    if (dn.life <= 0) { damageNumbers.splice(i,1); continue; }
+    const pp = project3D(dn.x, dn.y, dn.z);
+    if (!pp) continue;
+    ctx.globalAlpha = dn.life/dn.maxLife;
+    ctx.fillStyle = dn.color;
+    ctx.font = `bold ${Math.max(12,16*pp.scale)}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.fillText('-'+dn.amount, pp.x, pp.y);
+    ctx.globalAlpha = 1;
+  }
 }
 
 // ===== COLLISION =====
@@ -301,8 +1355,33 @@ function shoot() {
     hitNPC.health -= w.damage;
     hitNPC.state = 'flee';
     hitNPC.alertTimer = 5;
+    scoreSystem.hits++;
+    addDamageNumber(hitNPC.x, hitNPC.y+2, hitNPC.z, w.damage, '#FF4444');
     if (hitNPC.health <= 0) {
       game.money += 50;
+      scoreSystem.kills++;
+      scoreSystem.moneyEarned += 50;
+      scoreSystem.combo++;
+      scoreSystem.comboTimer = 3;
+      missionKills++;
+      if (activeMission && activeMission.id===0) activeMission.current = missionKills;
+      game.wanted = Math.min(5, game.wanted + 1);
+      game.wantedTimer = 30;
+      addKillFeed('🩸 Enemy Eliminated +$50');
+      showNotification('+$50 Eliminated! x'+scoreSystem.combo+' combo');
+      addBloodDecal(hitNPC.x, hitNPC.z);
+      for (let i = 0; i < 15; i++) {
+        particles.push({
+          x: hitNPC.x, y: hitNPC.y+1, z: hitNPC.z,
+          vx: (Math.random()-0.5)*0.5,
+          vy: Math.random()*0.5,
+          vz: (Math.random()-0.5)*0.5,
+          life: 1, maxLife: 1,
+          color: '#FF0000', size: 0.2
+        });
+      }
+      checkAchievements();
+    }
       game.wanted = Math.min(5, game.wanted + 1);
       game.wantedTimer = 30;
       showNotification('+$50 Eliminated!');
@@ -322,7 +1401,8 @@ function shoot() {
       life: 0.5, maxLife: 0.5, color: '#FF4400', size: 0.3
     });
   }
-}
+  scoreSystem.shotsFired++;
+  checkAchievements();
 
 // ===== NOTIFICATION =====
 function showNotification(msg) {
@@ -335,10 +1415,28 @@ function showNotification(msg) {
 
 // ===== UPDATE =====
 let lastTime = 0;
+let lastPlayerX = 0, lastPlayerZ = 0;
 function update(timestamp) {
   const dt = Math.min((timestamp - lastTime) / 1000, 0.05);
   lastTime = timestamp;
   game.time += dt;
+  game.dayTime = (game.dayTime + dt * 0.005) % 1;
+  scoreSystem.distanceTraveled += dist2D(player.x, player.z, lastPlayerX, lastPlayerZ);
+  lastPlayerX = player.x; lastPlayerZ = player.z;
+  if (scoreSystem.comboTimer > 0) {
+    scoreSystem.comboTimer -= dt;
+    if (scoreSystem.comboTimer <= 0) scoreSystem.combo = 0;
+  }
+  const currentScore = scoreSystem.kills*100 + game.money + Math.floor(game.time);
+  if (currentScore > scoreSystem.highScore) scoreSystem.highScore = currentScore;
+  updateWeather(dt);
+  updatePolice(dt);
+  updateMissions(dt);
+  updateHelicopter(dt);
+  updateFootsteps(dt);
+  checkAchievements();
+  // Blood decal life
+  for (const bd of bloodDecals) bd.life -= dt;
   game.dayTime = (game.dayTime + dt * 0.005) % 1;
 
   // Notification
@@ -439,6 +1537,13 @@ function update(timestamp) {
   if (keys['Digit1']) player.currentWeapon = 0;
   if (keys['Digit2']) player.currentWeapon = 1;
   if (keys['Digit3']) player.currentWeapon = 2;
+  if (keys['Digit4']) player.currentWeapon = 3;
+  if (keys['Digit5']) player.currentWeapon = 4;
+  if (keys['KeyT']) statsVisible = !statsVisible;
+  if (keys['KeyG']) {
+    keys['KeyG'] = false;
+    createExplosion(player.x + Math.sin(camera.rotY)*10, 0, player.z + Math.cos(camera.rotY)*10, 5);
+  }
 
   // Pickup collection
   for (const p of pickups) {
@@ -514,6 +1619,12 @@ function update(timestamp) {
   document.getElementById('ammo').textContent = w.ammo < 0 ? '∞' : w.ammo + '/' + w.maxAmmo;
   document.getElementById('weapon-name').textContent = '🔫 ' + w.name;
   document.getElementById('speed').textContent = Math.round(player.speed*30) + ' km/h';
+  // Update controls hint for new weapons
+  if (player.currentWeapon >= 3) {
+    document.getElementById('weapon-name').style.color = '#FF4444';
+  } else {
+    document.getElementById('weapon-name').style.color = '#ffcc00';
+  }
 }
 
 // ===== RENDER =====
@@ -866,6 +1977,12 @@ function render() {
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, canvas.width, Math.max(horizonY, 0));
   
+  // Stars (night)
+  drawStars();
+  drawMoon();
+  drawClouds();
+  drawBirds();
+  
   // Ground
   const groundGrad = ctx.createLinearGradient(0, horizonY, 0, canvas.height);
   groundGrad.addColorStop(0, '#4A7A4A');
@@ -907,7 +2024,26 @@ function render() {
     ctx.moveTo(p1.x, p1.y);
     ctx.lineTo(p2.x, p2.y);
     ctx.stroke();
+    // Road center line
+    ctx.strokeStyle = 'rgba(255,255,0,0.4)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([20,20]);
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
   }
+  
+  drawPuddles();
+  drawBloodDecals();
+  drawFootsteps();
+  drawSkidMarks();
+  drawFences();
+  drawPowerLines();
+  drawGraffiti();
+  drawTrash();
+  drawStreetLights();
   
   // Sort objects by distance
   const allObjects = [
@@ -915,6 +2051,7 @@ function render() {
     ...trees.map(t => ({type:'tree',obj:t,dist:dist2D(player.x,player.z,t.x,t.z)})),
     ...cars.map(c => ({type:'car',obj:c,dist:dist3D(player,c)})),
     ...npcs.map(n => ({type:'npc',obj:n,dist:dist3D(player,{x:n.x,y:n.y,z:n.z})})),
+    ...police.map(p => ({type:'police',obj:p,dist:dist3D(player,{x:p.x,y:p.y,z:p.z})})),
     ...pickups.filter(p=>p.active).map(p => ({type:'pickup',obj:p,dist:dist3D(player,p)})),
     ...particles.map(p => ({type:'particle',obj:p,dist:dist3D(player,p)})),
     ...bullets.map(b => ({type:'bullet',obj:b,dist:dist3D(player,b)}))
@@ -925,6 +2062,7 @@ function render() {
     else if (item.type === 'tree') drawTree(item.obj);
     else if (item.type === 'car') drawCar(item.obj);
     else if (item.type === 'npc') drawPerson(item.obj);
+    else if (item.type === 'police') drawPolice(item.obj);
     else if (item.type === 'pickup') drawPickup(item.obj);
     else if (item.type === 'particle') drawParticle(item.obj);
     else if (item.type === 'bullet') {
@@ -939,7 +2077,15 @@ function render() {
       }
     }
   }
+  drawSmoke();
+  drawFire();
+  drawExplosions();
+  drawHelicopter();
+  drawDamageNumbers();
   drawPlayer3D();
+  drawWeather();
+  drawHUDExtras();
+  drawWantedMeter();
   drawMinimap();
 }
 
@@ -1045,6 +2191,16 @@ window.addEventListener('resize', () => {
   canvas.height = window.innerHeight;
 });
 
+document.addEventListener('keydown', e => {
+  if (e.code === 'KeyP') {
+    game.paused = !game.paused;
+    showNotification(game.paused ? '⏸ PAUSED' : '▶ RESUMED');
+  }
+});
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+});
+
 // ===== GAME LOOP =====
 function gameLoop(timestamp) {
   update(timestamp);
@@ -1054,7 +2210,15 @@ function gameLoop(timestamp) {
 
 // ===== INIT =====
 generateWorld();
-showNotification('🎮 GTA5 - Click to lock mouse | WASD to move');
+initStreetLights();
+initPuddles();
+initClouds();
+initBirds();
+initStars();
+initGraffiti();
+initTrash();
+startMission(0);
+showNotification('🎮 GTA5 - Click to lock mouse | WASD=Move | G=Grenade | T=Stats | P=Pause');
 requestAnimationFrame(gameLoop);
 </script>
 </body>
