@@ -856,14 +856,15 @@ function drawMinimap() {
 function render() {
   ctx.clearRect(0,0,canvas.width,canvas.height);
   
-  // Sky gradient
   const horizonY = canvas.height * 0.5 + camera.rotX * canvas.height * 0.8;
+  
+  // Sky
   const skyColor = getSkyColor();
   const grad = ctx.createLinearGradient(0, 0, 0, Math.max(horizonY, 1));
   grad.addColorStop(0, skyColor);
   grad.addColorStop(1, '#87CEEB');
   ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, canvas.width, Math.max(horizonY, 0));
   
   // Ground
   const groundGrad = ctx.createLinearGradient(0, horizonY, 0, canvas.height);
@@ -871,17 +872,17 @@ function render() {
   groundGrad.addColorStop(0.5, '#3A5A3A');
   groundGrad.addColorStop(1, '#2A3A2A');
   ctx.fillStyle = groundGrad;
-  ctx.fillRect(0, horizonY, canvas.width, canvas.height - horizonY);
+  ctx.fillRect(0, Math.max(horizonY, 0), canvas.width, canvas.height - Math.max(horizonY, 0));
   
-  // Sun/Moon
+  // Sun
   const sunX = canvas.width * (0.5 + Math.cos(game.dayTime*Math.PI*2)*0.4);
   const sunY = horizonY * (0.3 + (1 - Math.sin(game.dayTime*Math.PI*2))*0.35);
-  ctx.fillStyle = game.dayTime < 0.5 ? '#FFEEAA' : '#FFFAAA';
+  ctx.fillStyle = game.dayTime < 0.5 ? '#FFEEAA' : '#CCDDFF';
   ctx.beginPath();
   ctx.arc(sunX, sunY, 30, 0, Math.PI*2);
   ctx.fill();
   
-  // Glow around sun
+  // Glow
   const sunGlow = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, 80);
   sunGlow.addColorStop(0, 'rgba(255,240,100,0.3)');
   sunGlow.addColorStop(1, 'rgba(255,240,100,0)');
@@ -890,16 +891,57 @@ function render() {
   ctx.arc(sunX, sunY, 80, 0, Math.PI*2);
   ctx.fill();
   
-  // Ground plane
-  drawGround();
-  const sunX = canvas.width * (0.5 + Math.cos(game.dayTime*Math.PI*2)*0.4);
-  const sunY = canvas.height * (0.3 - Math.sin(game.dayTime*Math.PI*2)*0.25);
-  ctx.fillStyle = game.dayTime > 0.5 ? '#FFFAAA' : '#FFEEAA';
-  ctx.beginPath();
-  ctx.arc(sunX, sunY, 30, 0, Math.PI*2);
-  ctx.fill();
-  // Ground
-  drawGround();
+  // Roads
+  for (const road of roads) {
+    const p1 = road.dir === 'z' ?
+      project3D(road.x, 0.01, road.z) :
+      project3D(road.x, 0.01, road.z);
+    if (!p1) continue;
+    const p2 = road.dir === 'z' ?
+      project3D(road.x, 0.01, road.z + road.l) :
+      project3D(road.x + road.l, 0.01, road.z);
+    if (!p2) continue;
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth = road.w * (p1.scale + p2.scale) * 30;
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.stroke();
+  }
+  
+  // Sort objects by distance
+  const allObjects = [
+    ...buildings.map(b => ({type:'building',obj:b,dist:dist3D(player,b)})),
+    ...trees.map(t => ({type:'tree',obj:t,dist:dist2D(player.x,player.z,t.x,t.z)})),
+    ...cars.map(c => ({type:'car',obj:c,dist:dist3D(player,c)})),
+    ...npcs.map(n => ({type:'npc',obj:n,dist:dist3D(player,{x:n.x,y:n.y,z:n.z})})),
+    ...pickups.filter(p=>p.active).map(p => ({type:'pickup',obj:p,dist:dist3D(player,p)})),
+    ...particles.map(p => ({type:'particle',obj:p,dist:dist3D(player,p)})),
+    ...bullets.map(b => ({type:'bullet',obj:b,dist:dist3D(player,b)}))
+  ].sort((a,b) => b.dist - a.dist);
+  for (const item of allObjects) {
+    if (item.dist > 200) continue;
+    if (item.type === 'building') drawBox(item.obj.x,item.obj.y,item.obj.z,item.obj.w,item.obj.h,item.obj.d,item.obj.color,item.obj.roofColor,item.obj.windowColor);
+    else if (item.type === 'tree') drawTree(item.obj);
+    else if (item.type === 'car') drawCar(item.obj);
+    else if (item.type === 'npc') drawPerson(item.obj);
+    else if (item.type === 'pickup') drawPickup(item.obj);
+    else if (item.type === 'particle') drawParticle(item.obj);
+    else if (item.type === 'bullet') {
+      const bp = project3D(item.obj.x,item.obj.y,item.obj.z);
+      if (bp) {
+        ctx.fillStyle = item.obj.color;
+        ctx.globalAlpha = item.obj.life/item.obj.maxLife;
+        ctx.beginPath();
+        ctx.arc(bp.x,bp.y,item.obj.size*bp.scale*30,0,Math.PI*2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+  }
+  drawPlayer3D();
+  drawMinimap();
+}
   // Sort objects by distance
   const allObjects = [
     ...buildings.map(b => ({type:'building',obj:b,dist:dist3D(player,b)})),
