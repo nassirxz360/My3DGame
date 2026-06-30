@@ -942,39 +942,6 @@ function render() {
   drawPlayer3D();
   drawMinimap();
 }
-  // Sort objects by distance
-  const allObjects = [
-    ...buildings.map(b => ({type:'building',obj:b,dist:dist3D(player,b)})),
-    ...trees.map(t => ({type:'tree',obj:t,dist:dist2D(player.x,player.z,t.x,t.z)})),
-    ...cars.map(c => ({type:'car',obj:c,dist:dist3D(player,c)})),
-    ...npcs.map(n => ({type:'npc',obj:n,dist:dist3D(player,{x:n.x,y:n.y,z:n.z})})),
-    ...pickups.filter(p=>p.active).map(p => ({type:'pickup',obj:p,dist:dist3D(player,p)})),
-    ...particles.map(p => ({type:'particle',obj:p,dist:dist3D(player,p)})),
-    ...bullets.map(b => ({type:'bullet',obj:b,dist:dist3D(player,b)}))
-  ].sort((a,b) => b.dist - a.dist);
-  for (const item of allObjects) {
-    if (item.dist > 200) continue;
-    if (item.type === 'building') drawBox(item.obj.x,item.obj.y,item.obj.z,item.obj.w,item.obj.h,item.obj.d,item.obj.color,item.obj.roofColor,item.obj.windowColor);
-    else if (item.type === 'tree') drawTree(item.obj);
-    else if (item.type === 'car') drawCar(item.obj);
-    else if (item.type === 'npc') drawPerson(item.obj);
-    else if (item.type === 'pickup') drawPickup(item.obj);
-    else if (item.type === 'particle') drawParticle(item.obj);
-    else if (item.type === 'bullet') {
-      const bp = project3D(item.obj.x,item.obj.y,item.obj.z);
-      if (bp) {
-        ctx.fillStyle = item.obj.color;
-        ctx.globalAlpha = item.obj.life/item.obj.maxLife;
-        ctx.beginPath();
-        ctx.arc(bp.x,bp.y,item.obj.size*bp.scale*30,0,Math.PI*2);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-      }
-    }
-  }
-  drawPlayer3D();
-  drawMinimap();
-}
 
 // ===== INPUT HANDLERS =====
 document.addEventListener('keydown', e => { keys[e.code] = true; e.preventDefault(); });
